@@ -53,7 +53,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         checkpoint = torch.load(f'{trainer_name}_{model_name}_checkpoint.pt')
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        trainer.load_state_dict(checkpoint['trainer'])
+        #trainer.load_state_dict(checkpoint['trainer'])
 
     def early_stop_score_function(engine):
         val_acc = engine.state.metrics['edit_distance']
