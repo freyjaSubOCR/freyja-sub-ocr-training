@@ -131,10 +131,10 @@ def OCR_collate_fn(batch):
 if __name__ == "__main__":
     chars = BasicChars()
     train_dataset = SubtitleDatasetOCR(chars=chars)
-    test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 64)
+    test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1)
     eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles.json'),
                                       samples=path.join('data', 'samples_eval'),
-                                      chars=chars, start_frame=500, end_frame=500 + 64)
+                                      chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1)
 
     train_dataloader = DataLoader(train_dataset, batch_size=64, collate_fn=OCR_collate_fn, num_workers=8, timeout=60)
     test_dataloader = DataLoader(test_dataset, batch_size=64, collate_fn=OCR_collate_fn)
