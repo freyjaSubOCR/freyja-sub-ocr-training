@@ -55,6 +55,10 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         optimizer.load_state_dict(checkpoint['optimizer'])
         #trainer.load_state_dict(checkpoint['trainer'])
 
+    if path.exists(f'{trainer_name}_{model_name}_backbone.pt'):
+        checkpoint = torch.load(f'{trainer_name}_{model_name}_backbone.pt')
+        model.backbone.load_state_dict(checkpoint['backbone'])
+
     def early_stop_score_function(engine):
         val_acc = engine.state.metrics['edit_distance']
         return val_acc
@@ -64,7 +68,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
 
     checkpoint_handler = ModelCheckpoint(f'models/{trainer_name}/{model_name}', model_name, n_saved=10, create_dir=True)
     trainer.add_event_handler(Events.ITERATION_COMPLETED(every=100), checkpoint_handler,
-                              {'model': model, 'optimizer': optimizer, 'trainer': trainer})
+                              {'model': model, 'optimizer': optimizer, 'trainer': trainer, 'backbone': model.backbone})
 
     @trainer.on(Events.ITERATION_COMPLETED(every=10))
     def log_training_loss(trainer):
