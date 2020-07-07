@@ -1,3 +1,4 @@
+import logging
 from os import path
 
 import torch
@@ -47,17 +48,18 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
     evaluator = create_supervised_evaluator(model, prepare_batch=_prepare_batch,
                                             metrics={'edit_distance': EditDistanceMetric()}, device=device)
     evaluator2 = create_supervised_evaluator(model, prepare_batch=_prepare_batch,
-                                            metrics={'edit_distance': EditDistanceMetric()}, device=device)
+                                             metrics={'edit_distance': EditDistanceMetric()}, device=device)
 
     if path.exists(f'{trainer_name}_{model_name}_checkpoint.pt'):
         checkpoint = torch.load(f'{trainer_name}_{model_name}_checkpoint.pt')
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        #trainer.load_state_dict(checkpoint['trainer'])
+        logging.info(f'load checkpoint {trainer_name}_{model_name}_checkpoint.pt')
 
     if path.exists(f'{trainer_name}_{model_name}_backbone.pt'):
         checkpoint = torch.load(f'{trainer_name}_{model_name}_backbone.pt')
         model.backbone.load_state_dict(checkpoint['backbone'])
+        logging.info(f'load backbone from {trainer_name}_{model_name}_backbone.pt')
 
     def early_stop_score_function(engine):
         val_acc = engine.state.metrics['edit_distance']
@@ -73,7 +75,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
     @trainer.on(Events.ITERATION_COMPLETED(every=10))
     def log_training_loss(trainer):
         lr = optimizer.param_groups[0]['lr']
-        print("Epoch[{}]: {} - Loss: {:.4f}, Lr: {}"
+        logging.info("Epoch[{}]: {} - Loss: {:.4f}, Lr: {}"
               .format(trainer.state.epoch, trainer.state.iteration, trainer.state.output, lr))
         writer.add_scalar("training/loss", trainer.state.output, trainer.state.iteration)
         writer.add_scalar("training/learning_rate", lr, trainer.state.iteration)
@@ -82,13 +84,13 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
     def log_training_results(trainer):
         evaluator.run(test_dataloader)
         metrics = evaluator.state.metrics
-        print("Training Results - Epoch[{}]: {} - Avg edit distance: {:.4f}"
+        logging.info("Training Results - Epoch[{}]: {} - Avg edit distance: {:.4f}"
               .format(trainer.state.epoch, trainer.state.iteration, metrics['edit_distance']))
         writer.add_scalar("training/avg_edit_distance", metrics['edit_distance'], trainer.state.iteration)
 
         evaluator2.run(eval_dataloader)
         metrics = evaluator2.state.metrics
-        print("Eval Results - Epoch[{}]: {} - Avg edit distance: {:.4f}"
+        logging.info("Eval Results - Epoch[{}]: {} - Avg edit distance: {:.4f}"
               .format(trainer.state.epoch, trainer.state.iteration, metrics['edit_distance']))
         writer.add_scalar("evaluation/avg_edit_distance", metrics['edit_distance'], trainer.state.iteration)
 
