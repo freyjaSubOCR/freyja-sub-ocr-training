@@ -62,9 +62,14 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         model_dict.update(pretrained_dict)
         model.backbone.load_state_dict(pretrained_dict)
         logging.info(f'load backbone from {backbone_url}')
+    
+    early_stop_arr = [0.0]
 
     def early_stop_score_function(engine):
         val_acc = engine.state.metrics['edit_distance']
+        if val_acc < 0.5: # do not early stop when acc is less than 0.5
+            early_stop_arr[0] += 0.000001
+            return early_stop_arr[0]
         return val_acc
 
     early_stop_handler = EarlyStopping(patience=100, score_function=early_stop_score_function, trainer=trainer)
