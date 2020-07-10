@@ -18,10 +18,10 @@ from OCRModels import CCNNResnext50, CRNNResnext50, CRNNResnext101
 from SubtitleDataset import SubtitleDatasetOCR
 
 
-def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader, labels_name, trainer_name='ocr'):
+def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader, labels_name, trainer_name='ocr', backbone_url=None):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-6)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     def _prepare_batch(batch, device=None, non_blocking=False):
         """Prepare batch for training: pass to a device with options.
@@ -32,8 +32,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         return (images, labels)
 
     writer = SummaryWriter(log_dir=f'logs/{trainer_name}/{model_name}')
-    cycle_lr_scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=0.001, total_steps=4000, cycle_momentum=False)
-    step_lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=500)
 
     def _update(engine, batch):
         model.train()
@@ -60,6 +59,13 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         checkpoint = torch.load(f'{trainer_name}_{model_name}_backbone.pt')
         model.backbone.load_state_dict(checkpoint['backbone'])
         logging.info(f'load backbone from {trainer_name}_{model_name}_backbone.pt')
+    elif backbone_url is not None:
+        pretrained_dict = torch.hub.load_state_dict_from_url(backbone_url, progress=False)
+        model_dict = model.backbone.state_dict()
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+        model_dict.update(pretrained_dict)
+        model.backbone.load_state_dict(pretrained_dict)
+        logging.info(f'load backbone from {backbone_url}')
 
     def early_stop_score_function(engine):
         val_acc = engine.state.metrics['edit_distance']
@@ -76,22 +82,26 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
     def log_training_loss(trainer):
         lr = optimizer.param_groups[0]['lr']
         logging.info("Epoch[{}]: {} - Loss: {:.4f}, Lr: {}"
-              .format(trainer.state.epoch, trainer.state.iteration, trainer.state.output, lr))
+                     .format(trainer.state.epoch, trainer.state.iteration, trainer.state.output, lr))
         writer.add_scalar("training/loss", trainer.state.output, trainer.state.iteration)
         writer.add_scalar("training/learning_rate", lr, trainer.state.iteration)
+
+    @trainer.on(Events.ITERATION_COMPLETED(every=10))
+    def step_lr(trainer):
+        lr_scheduler.step(trainer.state.output)
 
     @trainer.on(Events.ITERATION_COMPLETED(every=100))
     def log_training_results(trainer):
         evaluator.run(test_dataloader)
         metrics = evaluator.state.metrics
         logging.info("Training Results - Epoch[{}]: {} - Avg edit distance: {:.4f}"
-              .format(trainer.state.epoch, trainer.state.iteration, metrics['edit_distance']))
+                     .format(trainer.state.epoch, trainer.state.iteration, metrics['edit_distance']))
         writer.add_scalar("training/avg_edit_distance", metrics['edit_distance'], trainer.state.iteration)
 
         evaluator2.run(eval_dataloader)
         metrics = evaluator2.state.metrics
         logging.info("Eval Results - Epoch[{}]: {} - Avg edit distance: {:.4f}"
-              .format(trainer.state.epoch, trainer.state.iteration, metrics['edit_distance']))
+                     .format(trainer.state.epoch, trainer.state.iteration, metrics['edit_distance']))
         writer.add_scalar("evaluation/avg_edit_distance", metrics['edit_distance'], trainer.state.iteration)
 
         model.eval()
@@ -135,17 +145,20 @@ def OCR_collate_fn(batch):
 
 
 if __name__ == "__main__":
-    chars = BasicChars()
-    train_dataset = SubtitleDatasetOCR(chars=chars)
-    test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1)
-    eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles.json'),
+    logging.basicConfig(level=logging.INFO)
+    chars = SC3500Chars()
+    train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_hei.json'))
+    test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1,
+                                      styles_json=path.join('data', 'styles', 'styles_hei.json'))
+    eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_hei.json'),
                                       samples=path.join('data', 'samples_eval'),
                                       chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=64, collate_fn=OCR_collate_fn, num_workers=8, timeout=60)
+    train_dataloader = DataLoader(train_dataset, batch_size=32, collate_fn=OCR_collate_fn, num_workers=8, timeout=60)
     test_dataloader = DataLoader(test_dataset, batch_size=64, collate_fn=OCR_collate_fn)
     eval_dataloader = DataLoader(eval_dataset, batch_size=64, collate_fn=OCR_collate_fn)
 
-    model = CRNNResnext50(len(chars.chars))
+    model = CRNNResnext101(len(chars.chars))
 
-    train(model, 'CRNNResnext50', train_dataloader, test_dataloader, eval_dataloader, chars.chars, 'ocr_BasicChars')
+    train(model, 'CRNNResnext101', train_dataloader, test_dataloader, eval_dataloader, chars.chars, 'ocr_SC3500Chars_hei',
+          backbone_url='https://download.pytorch.org/models/resnext101_32x8d-8ba56ff5.pth')
