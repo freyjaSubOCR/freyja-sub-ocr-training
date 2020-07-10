@@ -32,7 +32,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         return (images, labels)
 
     writer = SummaryWriter(log_dir=f'logs/{trainer_name}/{model_name}')
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=500)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=100)
 
     def _update(engine, batch):
         model.train()
@@ -54,8 +54,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         logging.info(f'load checkpoint {trainer_name}_{model_name}_checkpoint.pt')
-
-    if path.exists(f'{trainer_name}_{model_name}_backbone.pt'):
+    elif path.exists(f'{trainer_name}_{model_name}_backbone.pt'):
         checkpoint = torch.load(f'{trainer_name}_{model_name}_backbone.pt')
         model.backbone.load_state_dict(checkpoint['backbone'])
         logging.info(f'load backbone from {trainer_name}_{model_name}_backbone.pt')
