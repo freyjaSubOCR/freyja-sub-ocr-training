@@ -53,11 +53,8 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         checkpoint = torch.load(f'{trainer_name}_{model_name}_checkpoint.pt')
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
+        lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
         logging.info(f'load checkpoint {trainer_name}_{model_name}_checkpoint.pt')
-    elif path.exists(f'{trainer_name}_{model_name}_backbone.pt'):
-        checkpoint = torch.load(f'{trainer_name}_{model_name}_backbone.pt')
-        model.backbone.load_state_dict(checkpoint['backbone'])
-        logging.info(f'load backbone from {trainer_name}_{model_name}_backbone.pt')
     elif backbone_url is not None:
         pretrained_dict = torch.hub.load_state_dict_from_url(backbone_url, progress=False)
         model_dict = model.backbone.state_dict()
@@ -75,7 +72,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
 
     checkpoint_handler = ModelCheckpoint(f'models/{trainer_name}/{model_name}', model_name, n_saved=10, create_dir=True)
     trainer.add_event_handler(Events.ITERATION_COMPLETED(every=100), checkpoint_handler,
-                              {'model': model, 'optimizer': optimizer, 'trainer': trainer, 'backbone': model.backbone})
+                              {'model': model, 'optimizer': optimizer, 'lr_scheduler': lr_scheduler})
 
     @trainer.on(Events.ITERATION_COMPLETED(every=10))
     def log_training_loss(trainer):
