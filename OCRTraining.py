@@ -32,7 +32,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         return (images, labels)
 
     writer = SummaryWriter(log_dir=f'logs/{trainer_name}/{model_name}')
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=100)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=200)
 
     def _update(engine, batch):
         model.train()
@@ -55,12 +55,19 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         optimizer.load_state_dict(checkpoint['optimizer'])
         lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
         logging.info(f'load checkpoint {trainer_name}_{model_name}_checkpoint.pt')
+    elif path.exists(f'{model_name}_backbone.pt'):
+        pretrained_dict = torch.load(f'{model_name}_backbone.pt')['model']
+        model_dict = model.state_dict()
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict and 'neck.' not in k and 'fc.' not in k}
+        model_dict.update(pretrained_dict)
+        model.load_state_dict(model_dict)
+        logging.info(f'load transfer parameters from {model_name}_backbone.pt')
     elif backbone_url is not None:
         pretrained_dict = torch.hub.load_state_dict_from_url(backbone_url, progress=False)
         model_dict = model.backbone.state_dict()
         pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
         model_dict.update(pretrained_dict)
-        model.backbone.load_state_dict(pretrained_dict)
+        model.backbone.load_state_dict(model_dict)
         logging.info(f'load backbone from {backbone_url}')
     
     early_stop_arr = [0.0]
@@ -147,7 +154,7 @@ def OCR_collate_fn(batch):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    chars = SC3500Chars()
+    chars = CJKChars()
     train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_hei.json'))
     test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1,
                                       styles_json=path.join('data', 'styles', 'styles_hei.json'))
@@ -159,7 +166,7 @@ if __name__ == "__main__":
     test_dataloader = DataLoader(test_dataset, batch_size=64, collate_fn=OCR_collate_fn)
     eval_dataloader = DataLoader(eval_dataset, batch_size=64, collate_fn=OCR_collate_fn)
 
-    model = CRNNResnext101(len(chars.chars))
+    model = CRNNResnext101(len(chars.chars), rnn_hidden=1024)
 
-    train(model, 'CRNNResnext101', train_dataloader, test_dataloader, eval_dataloader, chars.chars, 'ocr_SC3500Chars_hei',
+    train(model, 'CRNNResnext101_1024', train_dataloader, test_dataloader, eval_dataloader, chars.chars, 'ocr_CJKChars_hei',
           backbone_url='https://download.pytorch.org/models/resnext101_32x8d-8ba56ff5.pth')
