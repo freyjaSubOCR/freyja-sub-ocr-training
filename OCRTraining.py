@@ -12,6 +12,7 @@ from ignite.metrics import Accuracy, Loss
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
+from ASSReader import ASSReader
 from Chars import *
 from EditDistanceMetric import EditDistanceMetric
 from OCRModels import CCNNResnext50, CRNNResnext50, CRNNResnext101
@@ -69,12 +70,12 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         model_dict.update(pretrained_dict)
         model.backbone.load_state_dict(model_dict)
         logging.info(f'load backbone from {backbone_url}')
-    
+
     early_stop_arr = [0.0]
 
     def early_stop_score_function(engine):
         val_acc = engine.state.metrics['edit_distance']
-        if val_acc < 0.5: # do not early stop when acc is less than 0.5
+        if val_acc < 0.5:  # do not early stop when acc is less than 0.5
             early_stop_arr[0] += 0.000001
             return early_stop_arr[0]
         return val_acc
@@ -155,12 +156,13 @@ def OCR_collate_fn(batch):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     chars = CJKChars()
-    train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_hei.json'))
+    texts = ASSReader().getCompatible(chars)
+    train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_hei.json'), texts=texts)
     test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1,
-                                      styles_json=path.join('data', 'styles', 'styles_hei.json'))
+                                      styles_json=path.join('data', 'styles', 'styles_hei.json'), texts=texts)
     eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_hei.json'),
                                       samples=path.join('data', 'samples_eval'),
-                                      chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1)
+                                      chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1, texts=texts)
 
     train_dataloader = DataLoader(train_dataset, batch_size=32, collate_fn=OCR_collate_fn, num_workers=8, timeout=60)
     test_dataloader = DataLoader(test_dataset, batch_size=64, collate_fn=OCR_collate_fn)
