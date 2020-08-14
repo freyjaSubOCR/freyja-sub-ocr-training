@@ -44,6 +44,38 @@ def _find_bounding_box(mask, shape):
     return pos_left, pos_up, pos_right, pos_down
 
 
+class VideoDataset(torch.utils.data.Dataset):
+    '''
+    Load video and subtitle as a pytorch dataset
+    '''
+
+    def __init__(self, video, ass, fonts=None):
+        super().__init__()
+        clip = core.ffms2.Source(source=video)
+        clip = core.resize.Bicubic(clip, format=vs.RGB24, matrix_in_s="709")
+        sub, mask = core.sub.TextFile(clip, ass, blend=False, fontdir=fonts)
+        self.clip = core.std.MaskedMerge(clip, sub, mask)
+        del sub
+        self.mask = mask
+
+    def _clipToTensor(self, clip):
+        frame = clip.get_frame(0)
+        img = np.zeros((3, frame.height, frame.width), dtype='float32')
+
+        for i, plane in enumerate(frame.planes()):
+            img[i, :, :] = plane
+        img = torch.as_tensor(img).true_divide_(255)
+
+        del frame
+        return img
+
+    def __len__(self):
+        return len(self.clip)
+
+    def __getitem__(self, index):
+        return self._clipToTensor(self.clip[index])
+
+
 class SubtitleDataset(torch.utils.data.IterableDataset):
     def __init__(self, styles_json=None, samples=None, fonts=None, start_frame=0, end_frame=None, chars=BasicChars(), texts=None):
         super().__init__()
@@ -102,7 +134,7 @@ class SubtitleDatasetIterator():
         if self.texts == None:
             text = [''.join(random.sample(self.chars.chars[1:], random.randint(3, 15))) for _ in range(self.clip.num_frames)]
         else:
-            text = [random.choice(self.texts) for _ in range(self.clip.num_frames)]
+            text = [''.join(random.sample(self.chars.chars[1:], random.randint(3, 15))) if random.random() < 0.5 else random.choice(self.texts) for _ in range(self.clip.num_frames)]
 
         ass_file_text = "[Script Info]\n" + \
             "ScriptType: v4.00+\n" + \
@@ -194,7 +226,7 @@ class SubtitleDatasetOCR(SubtitleDataset):
 
 
 class SubtitleDatasetIteratorOCR(SubtitleDatasetIterator):
-    def _rgb_to_grayscale(self, img:torch.Tensor):
+    def _rgb_to_grayscale(self, img: torch.Tensor):
         img_gray = torch.zeros_like(img)
         img_gray[0] = 0.2989 * img[0] + 0.5870 * img[1] + 0.1140 * img[2]
         img_gray[1] = img_gray[0]
