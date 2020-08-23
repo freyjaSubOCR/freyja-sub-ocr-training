@@ -156,7 +156,7 @@ def OCR_collate_fn(batch):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     chars = CJKChars()
-    texts = ASSReader().getCompatible(chars)
+    texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 15]
     train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_hei.json'), texts=texts)
     test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1,
                                       styles_json=path.join('data', 'styles', 'styles_hei.json'), texts=texts)
