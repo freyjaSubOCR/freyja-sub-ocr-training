@@ -15,6 +15,10 @@ class BasicChars():
         with open('data/chars/punctuationChars.txt', 'r', encoding='utf-8') as f:
             self.chars = self.blank + self.chars + f.read()
 
+    def export(self, path):
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(self.chars)
+
 
 class SC3500Chars(BasicChars):
     '''
