@@ -2,6 +2,7 @@ import torch
 import torchvision
 from torchvision.models.resnet import BasicBlock, Bottleneck, ResNet
 from torchvision.models.vgg import VGG
+from typing import Optional
 
 
 class RNNDecoder(torch.nn.Module):
@@ -39,41 +40,6 @@ class CNNDecoder(torch.nn.Module):
         x = x.permute(0, 2, 1)
         return x
 
-class OCR_JIT(torch.nn.Module):
-    '''
-    Basic network structure with CTC loss
-    '''
-
-    def __init__(self, n_classes, backbone, neck):
-        super().__init__()
-        self.backbone = backbone
-        self.neck = neck
-        self.fc = torch.nn.Linear(self.neck.out_channels, n_classes)
-        self.criterion = torch.nn.CTCLoss()
-
-    def forward(self, x):
-        '''
-        x = list([channels, height, width]), image
-        '''
-        cur_batch_size = x.shape[0]
-        x = self.backbone(x)
-        x = self.neck(x)
-        x = self.fc(x)
-        
-        classes: List[List[torch.Tensor]] = []
-        x = x.log_softmax(2)
-        values, indices = x.max(dim=2)
-        values, indices = values.cpu(), indices.cpu()
-
-        for prob_string, class_string in zip(values, indices):
-            _class: List[torch.Tensor] = []
-            for i in range(len(class_string)):
-                if class_string[i] != 0 and (i == 0 or class_string[i] != class_string[i - 1]):
-                    _class.append(class_string[i])
-            classes.append(_class)
-
-        return classes
-
 
 class OCR(torch.nn.Module):
     '''
@@ -87,7 +53,7 @@ class OCR(torch.nn.Module):
         self.fc = torch.nn.Linear(self.neck.out_channels, n_classes)
         self.criterion = torch.nn.CTCLoss()
 
-    def forward(self, x, targets=None):
+    def forward(self, x, targets: Optional[list] = None):
         '''
         x = list([channels, height, width]), image
         targets = list([class1, class2, ...], [class1, class2, ...]), len=batch (only in train mode)
@@ -110,7 +76,7 @@ class OCR(torch.nn.Module):
             return loss
 
         else:
-            classes = []
+            classes: List[List[torch.Tensor]] = []
             x = x.log_softmax(2)
             values, indices = x.max(dim=2)
             values, indices = values.cpu(), indices.cpu()
@@ -243,13 +209,6 @@ class CRNNResnext50(OCR):
 
 
 class CRNNResnext101(OCR):
-    def __init__(self, n_classes, rnn_hidden=256):
-        backbone = Resnext101_32x8dBackbone()
-        neck = RNNDecoder(2048, hidden_size=rnn_hidden)
-        super().__init__(n_classes, backbone, neck)
-
-
-class CRNNResnext101_JIT(OCR_JIT):
     def __init__(self, n_classes, rnn_hidden=256):
         backbone = Resnext101_32x8dBackbone()
         neck = RNNDecoder(2048, hidden_size=rnn_hidden)
