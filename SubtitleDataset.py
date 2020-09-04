@@ -76,6 +76,23 @@ class VideoDataset(torch.utils.data.Dataset):
         return self._clipToTensor(self.clip[index])
 
 
+class VideoDatasetTorchScript(VideoDataset):
+    '''
+    Load video and subtitle as a pytorch dataset
+    '''
+
+    def _clipToTensor(self, clip):
+        frame = clip.get_frame(0)
+        img = np.zeros((frame.height, frame.width, 3), dtype='float32')
+
+        for i, plane in enumerate(frame.planes()):
+            img[:, :, i] = plane
+        img = torch.as_tensor(img)
+
+        del frame
+        return img
+
+
 class SubtitleDataset(torch.utils.data.IterableDataset):
     def __init__(self, styles_json=None, samples=None, fonts=None, start_frame=0, end_frame=None, chars=BasicChars(), texts=None):
         super().__init__()

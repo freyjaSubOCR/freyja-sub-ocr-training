@@ -2,7 +2,7 @@ import torch
 import torchvision
 from torchvision.models.resnet import BasicBlock, Bottleneck, ResNet
 from torchvision.models.vgg import VGG
-from typing import Optional
+from typing import Optional, List
 
 
 class RNNDecoder(torch.nn.Module):
@@ -53,7 +53,7 @@ class OCR(torch.nn.Module):
         self.fc = torch.nn.Linear(self.neck.out_channels, n_classes)
         self.criterion = torch.nn.CTCLoss()
 
-    def forward(self, x, targets: Optional[list] = None):
+    def forward(self, x, targets: Optional[List[torch.Tensor]] = None):
         '''
         x = list([channels, height, width]), image
         targets = list([class1, class2, ...], [class1, class2, ...]), len=batch (only in train mode)
@@ -66,26 +66,27 @@ class OCR(torch.nn.Module):
         x = self.neck(x)
         x = self.fc(x)
 
-        if self.training:
+        if self.training and not torch.jit.is_scripting():
+            assert(targets is not None)
             x = x.permute((1, 0, 2))
             x = x.log_softmax(2)
             input_lengths = torch.full((cur_batch_size,), x.size()[0], dtype=torch.long)
             target_length = torch.tensor([target.size()[0] for target in targets], dtype=torch.long)
-            targets = torch.cat(targets)
-            loss = self.criterion(x, targets, input_lengths, target_length)
+            targets_cat = torch.cat(targets)
+            loss = self.criterion(x, targets_cat, input_lengths, target_length)
             return loss
 
         else:
-            classes: List[List[torch.Tensor]] = []
+            classes: List[List[int]] = []
             x = x.log_softmax(2)
             values, indices = x.max(dim=2)
             values, indices = values.cpu(), indices.cpu()
 
             for prob_string, class_string in zip(values, indices):
-                _class = []
+                _class: List[int] = []
                 for i in range(len(class_string)):
                     if class_string[i] != 0 and (i == 0 or class_string[i] != class_string[i - 1]):
-                        _class.append(class_string[i])
+                        _class.append(class_string[i].item())
                 classes.append(_class)
 
             return classes

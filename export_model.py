@@ -12,7 +12,7 @@ rcnn_model.load_state_dict(rcnn_checkpoint['model'])
 rcnn_model = RCNNTorchScript(rcnn_model)
 rcnn_model.eval()
 rcnn_model_script = torch.jit.script(rcnn_model)
-torch.jit.save(rcnn_model_script, 'models/object_detection.pt')
+torch.jit.save(rcnn_model_script, 'models/object_detection.torchscript')
 
 
 chars = SC3500Chars()
@@ -24,7 +24,7 @@ ocr_model.load_state_dict(ocr_checkpoint['model'])
 ocr_model = OCRTorchScript(ocr_model)
 ocr_model.eval()
 ocr_model_script = torch.jit.script(ocr_model)
-torch.jit.save(ocr_model_script, 'models/ocr_SC3500Chars_yuan.pt')
+torch.jit.save(ocr_model_script, 'models/ocr_SC3500Chars_yuan.torchscript')
 
 
 ocr_model = CRNNResnext101(len(chars.chars), rnn_hidden=1280)
@@ -33,6 +33,6 @@ ocr_model.load_state_dict(ocr_checkpoint['model'])
 ocr_model = OCRTorchScript(ocr_model)
 ocr_model.eval()
 ocr_model_script = torch.jit.script(ocr_model)
-torch.jit.save(ocr_model_script, 'models/ocr_SC3500Chars_hei.pt')
+torch.jit.save(ocr_model_script, 'models/ocr_SC3500Chars_hei.torchscript')
 
 chars.export('models/ocr_SC3500Chars.txt')
