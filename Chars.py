@@ -20,6 +20,17 @@ class BasicChars():
             f.write(self.chars)
 
 
+class TC3600Chars(BasicChars):
+    '''
+    Chars containing BaseChars and frequently used 3500 simplified chinese chars
+    '''
+
+    def __init__(self):
+        super().__init__()
+        with open('data/chars/TC3600Chars.txt', 'r', encoding='utf-8') as f:
+            self.chars = self.chars + f.read()
+
+
 class SC3500Chars(BasicChars):
     '''
     Chars containing BaseChars and frequently used 3500 simplified chinese chars

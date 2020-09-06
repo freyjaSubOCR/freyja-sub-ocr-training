@@ -117,7 +117,7 @@ class SubtitleDatasetIterator():
         with open(dataset.styles_json, 'r', encoding='utf-8') as f:
             self.styles = json.load(f)
 
-        sample = path.join(dataset.samples, random.choice([f for f in os.listdir(dataset.samples) if not f.endswith('.ffindex')]))
+        sample = path.join(dataset.samples, random.choice([f for f in os.listdir(dataset.samples) if f.endswith('.mkv')]))
 
         clip = core.ffms2.Source(source=sample)
         clip = core.resize.Bicubic(clip, format=vs.RGB24, matrix_in_s="709")

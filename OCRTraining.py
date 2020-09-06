@@ -22,7 +22,7 @@ from SubtitleDataset import SubtitleDatasetOCR
 def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader, labels_name, trainer_name='ocr', backbone_url=None):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
 
     def _prepare_batch(batch, device=None, non_blocking=False):
         """Prepare batch for training: pass to a device with options.
@@ -33,7 +33,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         return (images, labels)
 
     writer = SummaryWriter(log_dir=f'logs/{trainer_name}/{model_name}')
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=200)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=250)
 
     def _update(engine, batch):
         model.train()
@@ -54,7 +54,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         checkpoint = torch.load(f'{trainer_name}_{model_name}_checkpoint.pt')
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+        # lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
         logging.info(f'load checkpoint {trainer_name}_{model_name}_checkpoint.pt')
     elif path.exists(f'{model_name}_backbone.pt'):
         pretrained_dict = torch.load(f'{model_name}_backbone.pt')['model']
@@ -75,16 +75,16 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
 
     def early_stop_score_function(engine):
         val_acc = engine.state.metrics['edit_distance']
-        if val_acc < 0.5:  # do not early stop when acc is less than 0.5
+        if val_acc < 0.9:  # do not early stop when acc is less than 0.9
             early_stop_arr[0] += 0.000001
             return early_stop_arr[0]
         return val_acc
 
-    early_stop_handler = EarlyStopping(patience=100, score_function=early_stop_score_function, trainer=trainer)
-    evaluator.add_event_handler(Events.COMPLETED, early_stop_handler)
+    early_stop_handler = EarlyStopping(patience=20, score_function=early_stop_score_function, trainer=trainer)
+    evaluator2.add_event_handler(Events.COMPLETED, early_stop_handler)
 
     checkpoint_handler = ModelCheckpoint(f'models/{trainer_name}/{model_name}', model_name, n_saved=10, create_dir=True)
-    trainer.add_event_handler(Events.ITERATION_COMPLETED(every=100), checkpoint_handler,
+    trainer.add_event_handler(Events.ITERATION_COMPLETED(every=1000), checkpoint_handler,
                               {'model': model, 'optimizer': optimizer, 'lr_scheduler': lr_scheduler})
 
     @trainer.on(Events.ITERATION_COMPLETED(every=10))
@@ -99,13 +99,13 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
     def step_lr(trainer):
         lr_scheduler.step(trainer.state.output)
 
-    @trainer.on(Events.ITERATION_COMPLETED(every=100))
+    @trainer.on(Events.ITERATION_COMPLETED(every=1000))
     def log_training_results(trainer):
-        evaluator.run(test_dataloader)
+        '''evaluator.run(test_dataloader)
         metrics = evaluator.state.metrics
         logging.info("Training Results - Epoch[{}]: {} - Avg edit distance: {:.4f}"
                      .format(trainer.state.epoch, trainer.state.iteration, metrics['edit_distance']))
-        writer.add_scalar("training/avg_edit_distance", metrics['edit_distance'], trainer.state.iteration)
+        writer.add_scalar("training/avg_edit_distance", metrics['edit_distance'], trainer.state.iteration)'''
 
         evaluator2.run(eval_dataloader)
         metrics = evaluator2.state.metrics
@@ -155,20 +155,20 @@ def OCR_collate_fn(batch):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    chars = CJKChars()
+    chars = TC3600Chars()
     texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 15]
-    train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_hei.json'), texts=texts)
-    test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1,
-                                      styles_json=path.join('data', 'styles', 'styles_hei.json'), texts=texts)
-    eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_hei.json'),
+    train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'), texts=texts)
+    test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 16, grayscale=1,
+                                      styles_json=path.join('data', 'styles', 'styles_yuan.json'), texts=texts)
+    eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_yuan.json'),
                                       samples=path.join('data', 'samples_eval'),
-                                      chars=chars, start_frame=500, end_frame=500 + 64, grayscale=1, texts=texts)
+                                      chars=chars, start_frame=500, end_frame=500 + 16, grayscale=1, texts=texts)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=32, collate_fn=OCR_collate_fn, num_workers=8, timeout=60)
-    test_dataloader = DataLoader(test_dataset, batch_size=64, collate_fn=OCR_collate_fn)
-    eval_dataloader = DataLoader(eval_dataset, batch_size=64, collate_fn=OCR_collate_fn)
+    train_dataloader = DataLoader(train_dataset, batch_size=16, collate_fn=OCR_collate_fn, num_workers=16, timeout=60)
+    test_dataloader = DataLoader(test_dataset, batch_size=16, collate_fn=OCR_collate_fn)
+    eval_dataloader = DataLoader(eval_dataset, batch_size=16, collate_fn=OCR_collate_fn)
 
-    model = CRNNResnext101(len(chars.chars), rnn_hidden=1024)
+    model = CRNNResnext101(len(chars.chars), rnn_hidden=1280)
 
-    train(model, 'CRNNResnext101_1024', train_dataloader, test_dataloader, eval_dataloader, chars.chars, 'ocr_CJKChars_hei',
+    train(model, 'CRNNResnext101_1280', train_dataloader, test_dataloader, eval_dataloader, chars.chars, 'ocr_TC3600Chars_yuan',
           backbone_url='https://download.pytorch.org/models/resnext101_32x8d-8ba56ff5.pth')
