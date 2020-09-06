@@ -38,3 +38,7 @@ class RCNNTorchScript(torch.nn.Module):
         img_list = [x[i, :, :, :] for i in range(x.size()[0])]
         _, result = self.base_model(img_list)
         return result
+
+class MSETorchScript(torch.nn.Module):
+    def forward(self, input, target):
+        return F.mse_loss(input, target)

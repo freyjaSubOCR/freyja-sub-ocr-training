@@ -36,3 +36,7 @@ ocr_model_script = torch.jit.script(ocr_model)
 torch.jit.save(ocr_model_script, 'models/ocr_SC3500Chars_hei.torchscript')
 
 chars.export('models/ocr_SC3500Chars.txt')
+
+mse_model = MSETorchScript()
+mse_model_script = torch.jit.script(mse_model)
+torch.jit.save(mse_model_script, 'models/mse.torchscript')
