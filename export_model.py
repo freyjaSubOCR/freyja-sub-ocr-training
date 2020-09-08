@@ -37,6 +37,30 @@ torch.jit.save(ocr_model_script, 'models/ocr_SC3500Chars_hei.torchscript')
 
 chars.export('models/ocr_SC3500Chars.txt')
 
+
+chars = TC3600Chars()
+
+
+ocr_model = CRNNResnext101(len(chars.chars), rnn_hidden=1280)
+ocr_checkpoint = torch.load('models/TC3600Chars_yuan_CRNNResnext101_1280_checkpoint.pt')
+ocr_model.load_state_dict(ocr_checkpoint['model'])
+ocr_model = OCRTorchScript(ocr_model)
+ocr_model.eval()
+ocr_model_script = torch.jit.script(ocr_model)
+torch.jit.save(ocr_model_script, 'models/ocr_TC3600Chars_yuan.torchscript')
+
+
+ocr_model = CRNNResnext101(len(chars.chars), rnn_hidden=1280)
+ocr_checkpoint = torch.load('models/TC3600Chars_hei_CRNNResnext101_1280_checkpoint.pt')
+ocr_model.load_state_dict(ocr_checkpoint['model'])
+ocr_model = OCRTorchScript(ocr_model)
+ocr_model.eval()
+ocr_model_script = torch.jit.script(ocr_model)
+torch.jit.save(ocr_model_script, 'models/ocr_TC3600Chars_hei.torchscript')
+
+chars.export('models/ocr_TC3600Chars.txt')
+
+
 mse_model = MSETorchScript()
 mse_model_script = torch.jit.script(mse_model)
 torch.jit.save(mse_model_script, 'models/mse.torchscript')
