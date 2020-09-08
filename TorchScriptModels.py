@@ -12,7 +12,7 @@ class OCRTorchScript(torch.nn.Module):
         x = x.permute((0, 3, 1, 2))
         img_list: List[torch.Tensor] = []
         for i, box in enumerate(boxes):
-            img = x[i, :, box[1]:box[3], box[0]:box[2]]
+            img = x[box[4], :, box[1]:box[3], box[0]:box[2]]
             height = img.shape[1]
             img = F.interpolate(img.unsqueeze(0), scale_factor=40 / height).squeeze(0).true_divide_(255)
             img_list.append(img)
