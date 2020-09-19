@@ -1,6 +1,7 @@
 import torch
 from typing import List
 import torch.nn.functional as F
+from typing import List
 
 
 class OCRTorchScript(torch.nn.Module):
@@ -14,7 +15,10 @@ class OCRTorchScript(torch.nn.Module):
         for i, box in enumerate(boxes):
             img = x[int(box[4]), :, box[1]:box[3], box[0]:box[2]]
             height = img.shape[1]
-            img = F.interpolate(img.unsqueeze(0), scale_factor=40 / height).squeeze(0).true_divide_(255)
+            if height == 0:
+                result: List[List[int]] = []
+                return result
+            img = F.interpolate(img.unsqueeze(0), scale_factor=40 / height, recompute_scale_factor=False).squeeze(0).true_divide_(255)
             img_list.append(img)
         x = self.cat_list(img_list)
         return self.base_model(x)
@@ -38,6 +42,7 @@ class RCNNTorchScript(torch.nn.Module):
         img_list = [x[i, :, :, :] for i in range(x.size()[0])]
         _, result = self.base_model(img_list)
         return result
+
 
 class MSETorchScript(torch.nn.Module):
     def forward(self, input, target):
