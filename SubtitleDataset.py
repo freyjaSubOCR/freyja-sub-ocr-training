@@ -49,14 +49,17 @@ class VideoDataset(torch.utils.data.Dataset):
     Load video and subtitle as a pytorch dataset
     '''
 
-    def __init__(self, video, ass, fonts=None):
+    def __init__(self, video, ass=None, fonts=None):
         super().__init__()
         clip = core.ffms2.Source(source=video)
         clip = core.resize.Bicubic(clip, format=vs.RGB24, matrix_in_s="709")
-        sub, mask = core.sub.TextFile(clip, ass, blend=False, fontdir=fonts)
-        self.clip = core.std.MaskedMerge(clip, sub, mask)
-        del sub
-        self.mask = mask
+        if ass is not None:
+            sub, mask = core.sub.TextFile(clip, ass, blend=False, fontdir=fonts)
+            self.clip = core.std.MaskedMerge(clip, sub, mask)
+            del sub
+            self.mask = mask
+        else:
+            self.clip = clip
 
     def _clipToTensor(self, clip):
         frame = clip.get_frame(0)
@@ -129,6 +132,7 @@ class SubtitleDatasetIterator():
         self.chars = dataset.chars
         self.texts = dataset.texts
         self.dataset = dataset
+        self._generateText()
         self._generateSub()
 
     def _clipToTensor(self, clip):
@@ -147,12 +151,13 @@ class SubtitleDatasetIterator():
         time_struct = time.gmtime(time_int // 100)
         return f'{time_struct.tm_hour}:{time_struct.tm_min:02d}:{time_struct.tm_sec:02d}.{time_int % 100:02}'
 
-    def _generateSub(self):
+    def _generateText(self):
         if self.texts == None:
-            text = [''.join(random.sample(self.chars.chars[1:], random.randint(3, 15))) for _ in range(self.clip.num_frames)]
+            self.texts = [''.join(random.sample(self.chars.chars[1:], random.randint(3, 15))) for _ in range(self.clip.num_frames)]
         else:
-            text = [''.join(random.sample(self.chars.chars[1:], random.randint(3, 15))) if random.random() < 0.5 else random.choice(self.texts) for _ in range(self.clip.num_frames)]
+            self.texts = [''.join(random.sample(self.chars.chars[1:], random.randint(3, 15))) if random.random() < 0.5 else random.choice(self.texts) for _ in range(self.clip.num_frames)]
 
+    def _generateSub(self):
         ass_file_text = "[Script Info]\n" + \
             "ScriptType: v4.00+\n" + \
             f"PlayResX: {self.clip.width}\n" + \
@@ -169,7 +174,7 @@ class SubtitleDatasetIterator():
         for i in range(self.clip.num_frames):
             start_time = self._frameToTime(i, fps=self.clip.fps, intf=math.floor)
             end_time = self._frameToTime(i + 1, fps=self.clip.fps, intf=math.floor)
-            ass_file_text += f"Dialogue: 0,{start_time},{end_time},Default{random.randrange(0, len(self.styles['fonts']) * len(self.styles['styles']))},,0,0,0,,{text[i]}\n"
+            ass_file_text += f"Dialogue: 0,{start_time},{end_time},Default{random.randrange(0, len(self.styles['fonts']) * len(self.styles['styles']))},,0,0,0,,{self.texts[i]}\n"
 
         with tempfile.NamedTemporaryFile('w', encoding='utf-8', delete=False) as f:
             f.write(ass_file_text)
@@ -182,7 +187,6 @@ class SubtitleDatasetIterator():
         del sub
         self.merged_clip = merged_clip
         self.mask = mask
-        self.text = text
 
     def __next__(self):
         if self.end_frame is not None and self.index >= self.end_frame:
@@ -201,7 +205,7 @@ class SubtitleDatasetIterator():
         del mask_frame
         bounding_box = _find_bounding_box(mask_img, mask_img.shape)
 
-        return self.merged_clip[index], bounding_box, mask_img.shape, self.text[index]
+        return self.merged_clip[index], bounding_box, mask_img.shape, self.texts[index]
 
 
 class SubtitleDatasetRCNN(SubtitleDataset):
@@ -274,3 +278,23 @@ class SubtitleDatasetIteratorOCR(SubtitleDatasetIterator):
         encoded_text = torch.tensor([self.chars.chars.index(char) for char in text], dtype=torch.long)
 
         return img, encoded_text
+
+
+class SubtitleDatasetOCREval(SubtitleDatasetOCR):
+    def __init__(self, styles_json=None, samples=None, fonts=None, start_frame=0, end_frame=None, chars=BasicChars(), texts=None, grayscale=0.5):
+        super().__init__(styles_json=styles_json, samples=samples, fonts=fonts, start_frame=start_frame, end_frame=end_frame, chars=chars, texts=texts, grayscale=grayscale)
+
+    def __iter__(self):
+        return SubtitleDatasetIteratorOCREval(self)
+
+
+class SubtitleDatasetIteratorOCREval(SubtitleDatasetIteratorOCR):
+    def _generateText(self):
+        self.texts = []
+        for i in range(11, len(self.chars.chars) // 10):
+            self.texts.append(self.chars.chars[i * 10 : i * 10 + 10])
+        self.texts.append(self.chars.chars[len(self.chars.chars) // 10 * 10 : len(self.chars.chars) // 10 * 10 + len(self.chars.chars) % 10])
+        self.texts = [self.texts[i % len(self.texts)] for i in range(self.clip.num_frames)]
+
+    def __next__(self):
+        return super().__next__()
