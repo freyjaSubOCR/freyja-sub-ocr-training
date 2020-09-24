@@ -18,12 +18,8 @@ from Chars import *
 from vapoursynth import core
 
 if not hasattr(core, 'ffms2'):
-    core.std.LoadPlugin('C:\\Program Files M\\vapoursynth\\vapoursynth64\\plugins\\ffms2.dll')
-    # core.std.LoadPlugin('/usr/local/lib/libffms2.so')
-
-if not hasattr(core, 'fmtc'):
-    core.std.LoadPlugin('C:\\Program Files M\\vapoursynth\\vapoursynth64\\plugins\\fmtconv.dll')
-    # core.std.LoadPlugin('/usr/local/lib/libfmtconv.so')
+    # core.std.LoadPlugin('C:\\Program Files M\\vapoursynth\\vapoursynth64\\plugins\\ffms2.dll')
+    core.std.LoadPlugin('/usr/local/lib/libffms2.so')
 
 
 @njit(nogil=True, cache=True)
@@ -292,8 +288,8 @@ class SubtitleDatasetIteratorOCREval(SubtitleDatasetIteratorOCR):
     def _generateText(self):
         self.texts = []
         for i in range(11, len(self.chars.chars) // 10):
-            self.texts.append(self.chars.chars[i * 10 : i * 10 + 10])
-        self.texts.append(self.chars.chars[len(self.chars.chars) // 10 * 10 : len(self.chars.chars) // 10 * 10 + len(self.chars.chars) % 10])
+            self.texts.append(self.chars.chars[i * 10: i * 10 + 10])
+        self.texts.append(self.chars.chars[len(self.chars.chars) // 10 * 10: len(self.chars.chars) // 10 * 10 + len(self.chars.chars) % 10])
         self.texts = [self.texts[i % len(self.texts)] for i in range(self.clip.num_frames)]
 
     def __next__(self):
