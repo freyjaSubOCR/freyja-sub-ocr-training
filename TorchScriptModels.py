@@ -18,7 +18,8 @@ class OCRTorchScript(torch.nn.Module):
             if height == 0:
                 result: List[List[int]] = []
                 return result
-            img = F.interpolate(img.unsqueeze(0), scale_factor=40 / height, recompute_scale_factor=False).squeeze(0).true_divide_(255)
+            img = F.interpolate(img.unsqueeze(0), mode='bicubic', scale_factor=40 / height, recompute_scale_factor=False)
+            img = img.squeeze(0).true_divide_(255).clamp_(0, 1)
             img_list.append(img)
         x = self.cat_list(img_list)
         return self.base_model(x)
