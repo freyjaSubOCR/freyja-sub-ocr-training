@@ -161,3 +161,9 @@ You needs to change the backbone url according to the CNN model you choose. Pre-
 After the training process, you can find the models in ```models``` folder. These files only contain the parameters of the models.
 
 To export the model that can be used by Freyja, run the ```export_model.py```. You may need to change the path string in the ```export_model.py```.
+
+```python
+device = torch.device('cuda')
+```
+
+This line controls the export target of the model. If you want the models to run on CPU, use ```torch.device('cpu')```, or If you want the models to run on GPU, use ```torch.device('cuda')```.
