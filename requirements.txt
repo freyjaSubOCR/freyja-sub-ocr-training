@@ -6,3 +6,4 @@ matplotlib
 ipython
 Pillow
 tensorboard
+efficientnet_pytorch

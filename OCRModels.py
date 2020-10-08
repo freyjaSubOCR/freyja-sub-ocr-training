@@ -3,20 +3,22 @@ import torchvision
 from torchvision.models.resnet import BasicBlock, Bottleneck, ResNet
 from torchvision.models.vgg import VGG
 from typing import Optional, List
+from efficientnet_pytorch import EfficientNet, get_model_params
 
 
 class RNNDecoder(torch.nn.Module):
     def __init__(self, in_channels, hidden_size=256):
         super(RNNDecoder, self).__init__()
-        self.rnn = torch.nn.GRU(in_channels, hidden_size, num_layers=2, batch_first=True, bidirectional=True)
+        self.rnn = torch.nn.GRU(in_channels, hidden_size, num_layers=2, bidirectional=True)
         self.out_channels = 2 * hidden_size
         self.hidden_size = hidden_size
 
     def forward(self, x):
         b, c, w, h = x.size()
         x = x.view(b, c, w * h)
-        x = x.permute(0, 2, 1)  # (b, w*h, c)
-        x, _ = self.rnn(x)  # (batch, seq_len, input_size) -> (batch, seq_len, num_directions * hidden_size)
+        x = x.permute(2, 0, 1)  # (w*h, b, c)
+        x, _ = self.rnn(x)  # (seq_len, batch, input_size) -> (seq_len, batch, num_directions * hidden_size)
+        x = x.permute(1, 0, 2)  # (batch, seq_len, num_directions * hidden_size)
         return x
 
 
@@ -188,6 +190,18 @@ class VGGBackbone(VGG):
         return x
 
 
+class EfficientNetB5Backbone(EfficientNet):
+    '''EfficientNet-B5 backbone'''
+
+    def __init__(self):
+        blocks_args, global_params = get_model_params('efficientnet-b5', None)
+        super().__init__(blocks_args, global_params)
+
+    def forward(self, x):
+        x = self.extract_features(x)
+        return x
+
+
 class CRNNVGG(OCR):
     def __init__(self, n_classes):
         backbone = VGGBackbone()
@@ -212,5 +226,12 @@ class CRNNResnext50(OCR):
 class CRNNResnext101(OCR):
     def __init__(self, n_classes, rnn_hidden=256):
         backbone = Resnext101_32x8dBackbone()
+        neck = RNNDecoder(2048, hidden_size=rnn_hidden)
+        super().__init__(n_classes, backbone, neck)
+
+
+class CRNNEfficientNetB5(OCR):
+    def __init__(self, n_classes, rnn_hidden=256):
+        backbone = EfficientNetB5Backbone()
         neck = RNNDecoder(2048, hidden_size=rnn_hidden)
         super().__init__(n_classes, backbone, neck)

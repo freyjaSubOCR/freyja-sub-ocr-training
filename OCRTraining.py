@@ -15,7 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 from ASSReader import ASSReader
 from Chars import *
 from EditDistanceMetric import EditDistanceMetric
-from OCRModels import CCNNResnext50, CRNNResnext50, CRNNResnext101
+from OCRModels import *
 from SubtitleDataset import SubtitleDatasetOCR
 
 
@@ -155,7 +155,7 @@ def OCR_collate_fn(batch):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    chars = TC3600Chars()
+    chars = SC3500Chars()
     texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 15]
     train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'), texts=texts)
     test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 16, grayscale=1,
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     test_dataloader = DataLoader(test_dataset, batch_size=16, collate_fn=OCR_collate_fn)
     eval_dataloader = DataLoader(eval_dataset, batch_size=16, collate_fn=OCR_collate_fn)
 
-    model = CRNNResnext101(len(chars.chars), rnn_hidden=1280)
+    model = CRNNEfficientNetB5(len(chars.chars), rnn_hidden=1280)
 
-    train(model, 'CRNNResnext101_1280', train_dataloader, test_dataloader, eval_dataloader, chars.chars, 'ocr_TC3600Chars_yuan',
-          backbone_url='https://download.pytorch.org/models/resnext101_32x8d-8ba56ff5.pth')
+    train(model, 'CRNNEfficientNetB5_1280', train_dataloader, test_dataloader, eval_dataloader, chars.chars, 'ocr_SC3500Chars_yuan',
+          backbone_url='https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/efficientnet-b5-b6417697.pth')
