@@ -9,7 +9,7 @@ from efficientnet_pytorch import EfficientNet, get_model_params
 class RNNDecoder(torch.nn.Module):
     def __init__(self, in_channels, hidden_size=256):
         super(RNNDecoder, self).__init__()
-        self.rnn = torch.nn.GRU(in_channels, hidden_size, num_layers=2, bidirectional=True)
+        self.rnn = torch.nn.LSTM(in_channels, hidden_size, num_layers=2, bidirectional=True)
         self.out_channels = 2 * hidden_size
         self.hidden_size = hidden_size
 
@@ -190,11 +190,35 @@ class VGGBackbone(VGG):
         return x
 
 
+class EfficientNetB3Backbone(EfficientNet):
+    '''EfficientNet-B3 backbone'''
+
+    def __init__(self):
+        blocks_args, global_params = get_model_params('efficientnet-b3', None)
+        super().__init__(blocks_args, global_params)
+
+    def forward(self, x):
+        x = self.extract_features(x)
+        return x
+
+
 class EfficientNetB5Backbone(EfficientNet):
     '''EfficientNet-B5 backbone'''
 
     def __init__(self):
         blocks_args, global_params = get_model_params('efficientnet-b5', None)
+        super().__init__(blocks_args, global_params)
+
+    def forward(self, x):
+        x = self.extract_features(x)
+        return x
+
+
+class EfficientNetB7Backbone(EfficientNet):
+    '''EfficientNet-B7 backbone'''
+
+    def __init__(self):
+        blocks_args, global_params = get_model_params('efficientnet-b7', None)
         super().__init__(blocks_args, global_params)
 
     def forward(self, x):
@@ -230,8 +254,22 @@ class CRNNResnext101(OCR):
         super().__init__(n_classes, backbone, neck)
 
 
+class CRNNEfficientNetB3(OCR):
+    def __init__(self, n_classes, rnn_hidden=256):
+        backbone = EfficientNetB3Backbone()
+        neck = RNNDecoder(1536, hidden_size=rnn_hidden)
+        super().__init__(n_classes, backbone, neck)
+
+
 class CRNNEfficientNetB5(OCR):
     def __init__(self, n_classes, rnn_hidden=256):
         backbone = EfficientNetB5Backbone()
         neck = RNNDecoder(2048, hidden_size=rnn_hidden)
+        super().__init__(n_classes, backbone, neck)
+
+
+class CRNNEfficientNetB7(OCR):
+    def __init__(self, n_classes, rnn_hidden=256):
+        backbone = EfficientNetB7Backbone()
+        neck = RNNDecoder(2560, hidden_size=rnn_hidden)
         super().__init__(n_classes, backbone, neck)
