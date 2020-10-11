@@ -19,7 +19,7 @@ from OCRModels import *
 from SubtitleDataset import SubtitleDatasetOCR
 
 
-def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader, labels_name, trainer_name='ocr', backbone_url=None):
+def train(model, model_name, train_dataloader, eval_dataloader, labels_name, trainer_name='ocr', backbone_url=None):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
@@ -46,8 +46,6 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
 
     trainer = Engine(_update)
     evaluator = create_supervised_evaluator(model, prepare_batch=_prepare_batch,
-                                            metrics={'edit_distance': EditDistanceMetric()}, device=device)
-    evaluator2 = create_supervised_evaluator(model, prepare_batch=_prepare_batch,
                                              metrics={'edit_distance': EditDistanceMetric()}, device=device)
 
     if path.exists(f'{trainer_name}_{model_name}_checkpoint.pt'):
@@ -81,7 +79,7 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
         return val_acc
 
     early_stop_handler = EarlyStopping(patience=20, score_function=early_stop_score_function, trainer=trainer)
-    evaluator2.add_event_handler(Events.COMPLETED, early_stop_handler)
+    evaluator.add_event_handler(Events.COMPLETED, early_stop_handler)
 
     checkpoint_handler = ModelCheckpoint(f'models/{trainer_name}/{model_name}', model_name, n_saved=10, create_dir=True)
     trainer.add_event_handler(Events.ITERATION_COMPLETED(every=1000), checkpoint_handler,
@@ -101,30 +99,11 @@ def train(model, model_name, train_dataloader, test_dataloader, eval_dataloader,
 
     @trainer.on(Events.ITERATION_COMPLETED(every=1000))
     def log_training_results(trainer):
-        '''evaluator.run(test_dataloader)
+        evaluator.run(eval_dataloader)
         metrics = evaluator.state.metrics
-        logging.info("Training Results - Epoch[{}]: {} - Avg edit distance: {:.4f}"
-                     .format(trainer.state.epoch, trainer.state.iteration, metrics['edit_distance']))
-        writer.add_scalar("training/avg_edit_distance", metrics['edit_distance'], trainer.state.iteration)'''
-
-        evaluator2.run(eval_dataloader)
-        metrics = evaluator2.state.metrics
         logging.info("Eval Results - Epoch[{}]: {} - Avg edit distance: {:.4f}"
                      .format(trainer.state.epoch, trainer.state.iteration, metrics['edit_distance']))
         writer.add_scalar("evaluation/avg_edit_distance", metrics['edit_distance'], trainer.state.iteration)
-
-        model.eval()
-        test_data = iter(eval_dataloader)
-        x, y = next(test_data)
-        x = x.to(device)
-        y_pred = model(x)
-
-        for label, output in zip(y, y_pred):
-            result = ''
-            result = result + ''.join([labels_name[i] for i in label]) + '\n'
-            result = result + ''.join([labels_name[i] for i in output])
-            writer.add_text("evaluation/example_result", result, trainer.state.iteration)
-            break
 
     @trainer.on(Events.ITERATION_COMPLETED(every=100))
     def read_lr_from_file(trainer):
@@ -158,17 +137,14 @@ if __name__ == "__main__":
     chars = SC3500Chars()
     texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 15]
     train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'), texts=texts)
-    test_dataset = SubtitleDatasetOCR(chars=chars, start_frame=500, end_frame=500 + 16, grayscale=1,
-                                      styles_json=path.join('data', 'styles', 'styles_yuan.json'), texts=texts)
     eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_yuan.json'),
                                       samples=path.join('data', 'samples_eval'),
                                       chars=chars, start_frame=500, end_frame=500 + 16, grayscale=1, texts=texts)
 
     train_dataloader = DataLoader(train_dataset, batch_size=16, collate_fn=OCR_collate_fn, num_workers=16, timeout=60)
-    test_dataloader = DataLoader(test_dataset, batch_size=16, collate_fn=OCR_collate_fn)
     eval_dataloader = DataLoader(eval_dataset, batch_size=16, collate_fn=OCR_collate_fn)
 
     model = CRNNEfficientNetB5(len(chars.chars), rnn_hidden=1280)
 
-    train(model, 'CRNNEfficientNetB5_1280', train_dataloader, test_dataloader, eval_dataloader, chars.chars, 'ocr_SC3500Chars_yuan',
+    train(model, 'CRNNEfficientNetB5_1280', train_dataloader, eval_dataloader, chars.chars, 'ocr_SC3500Chars_yuan',
           backbone_url='https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/efficientnet-b5-b6417697.pth')
