@@ -53,6 +53,17 @@ class SC7000Chars(BasicChars):
             self.chars = self.chars + f.read()
 
 
+class TinyCJKChars(BasicChars):
+    '''
+    Chars containing BaseChars and frequently used 8000 CJK chars
+    '''
+
+    def __init__(self):
+        super().__init__()
+        with open('data/chars/TinyCJKChars.txt', 'r', encoding='utf-8') as f:
+            self.chars = self.chars + f.read()
+
+
 class CJKChars(BasicChars):
     '''
     Chars containing BaseChars and Unicode CJK Unified Ideographs (No extensions)
