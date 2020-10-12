@@ -22,6 +22,7 @@ if not hasattr(core, 'ffms2'):
     # core.std.LoadPlugin('C:\\Program Files M\\vapoursynth\\vapoursynth64\\plugins\\ffms2.dll')
     core.std.LoadPlugin('/usr/local/lib/libffms2.so')
 
+core.max_cache_size = 2048 # 2G per worker
 
 @njit(nogil=True, cache=True)
 def _find_bounding_box(mask, shape):
