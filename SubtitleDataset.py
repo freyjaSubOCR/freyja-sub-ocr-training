@@ -3,19 +3,20 @@ import json
 import math
 import os
 import random
+import string
 import tempfile
 import time
 from os import path
 
 import numpy as np
 import torch
+import vapoursynth as vs
 from matplotlib import rcParams
 from numba import njit
 from PIL import Image
-
-import vapoursynth as vs
-from Chars import *
 from vapoursynth import core
+
+from Chars import *
 
 if not hasattr(core, 'ffms2'):
     # core.std.LoadPlugin('C:\\Program Files M\\vapoursynth\\vapoursynth64\\plugins\\ffms2.dll')
@@ -148,10 +149,24 @@ class SubtitleDatasetIterator():
         return f'{time_struct.tm_hour}:{time_struct.tm_min:02d}:{time_struct.tm_sec:02d}.{time_int % 100:02}'
 
     def _generateText(self):
+        def genRandomText():
+            text = random.sample(self.chars.chars[1:], random.randint(3, 15))
+            if random.random() < 0.2:
+                text.insert(random.randrange(0, len(text)), ''.join(random.sample(string.ascii_letters, random.randint(3, 7))))
+            if random.random() < 0.1:
+                start = random.randrange(0, len(text))
+                text.insert(start, "『")
+                text.insert(random.randrange(start, len(text)), "』")
+            if random.random() < 0.1:
+                start = random.randrange(0, len(text))
+                text.insert(start, "「")
+                text.insert(random.randrange(start, len(text)), "」")
+            return ''.join(text)
+
         if self.texts == None:
-            self.texts = [''.join(random.sample(self.chars.chars[1:], random.randint(3, 15))) for _ in range(self.clip.num_frames)]
+            self.texts = [genRandomText() for _ in range(self.clip.num_frames)]
         else:
-            self.texts = [''.join(random.sample(self.chars.chars[1:], random.randint(3, 15))) if random.random() < 0.5 else random.choice(self.texts) for _ in range(self.clip.num_frames)]
+            self.texts = [genRandomText() if random.random() < 0.5 else random.choice(self.texts) for _ in range(self.clip.num_frames)]
 
     def _generateSub(self):
         ass_file_text = "[Script Info]\n" + \
