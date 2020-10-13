@@ -46,7 +46,7 @@ def train(model, model_name, train_dataloader, eval_dataloader, labels_name, tra
 
     trainer = Engine(_update)
     evaluator = create_supervised_evaluator(model, prepare_batch=_prepare_batch,
-                                             metrics={'edit_distance': EditDistanceMetric()}, device=device)
+                                            metrics={'edit_distance': EditDistanceMetric()}, device=device)
 
     if path.exists(f'{trainer_name}_{model_name}_checkpoint.pt'):
         checkpoint = torch.load(f'{trainer_name}_{model_name}_checkpoint.pt')
@@ -136,10 +136,11 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     chars = SC3500Chars()
     texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 15]
-    train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'), texts=texts)
+    train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'),
+                                       texts=texts, grayscale=0)
     eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_yuan.json'),
                                       samples=path.join('data', 'samples_eval'),
-                                      chars=chars, start_frame=500, end_frame=500 + 16, grayscale=1, texts=texts)
+                                      chars=chars, start_frame=500, end_frame=500 + 16, grayscale=0, texts=texts)
 
     train_dataloader = DataLoader(train_dataset, batch_size=16, collate_fn=OCR_collate_fn, num_workers=16, timeout=60)
     eval_dataloader = DataLoader(eval_dataset, batch_size=16, collate_fn=OCR_collate_fn)
