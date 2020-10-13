@@ -42,6 +42,28 @@ class SC3500Chars(BasicChars):
             self.chars = self.chars + f.read()
 
 
+class SC5000Chars(BasicChars):
+    '''
+    Chars containing BaseChars and frequently used 5000 simplified chinese chars
+    '''
+
+    def __init__(self):
+        super().__init__()
+        with open('data/chars/SC5000Chars.txt', 'r', encoding='utf-8') as f:
+            self.chars = self.chars + f.read()
+
+
+class TC5000Chars(BasicChars):
+    '''
+    Chars containing BaseChars and frequently used 5000 traditional chinese chars
+    '''
+
+    def __init__(self):
+        super().__init__()
+        with open('data/chars/TC5000Chars.txt', 'r', encoding='utf-8') as f:
+            self.chars = self.chars + f.read()
+
+
 class SC7000Chars(BasicChars):
     '''
     Chars containing BaseChars and frequently used 7000 simplified chinese chars
