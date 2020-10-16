@@ -113,10 +113,10 @@ To train the model, run ```OCRTraining.py```.
 Parameters you can change:
 
 ```python
-    chars = TC3600Chars()
+    chars = SC5000Chars()
 ```
 
-You can change ```TC3600Chars()``` to other character sets like ```SC3500Chars()``` or ```CJKChars()```
+You can change ```SC5000Chars()``` to other character sets like ```SC3500Chars()```, ```TC3600Chars()```, ```SC5000Chars()```, ```TC5000Chars()```, ```TinyCJKChars()``` or ```CJKChars()```
 
 ```python
     train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'), texts=texts)
