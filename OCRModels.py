@@ -9,7 +9,7 @@ from efficientnet_pytorch import EfficientNet, get_model_params
 class RNNDecoder(torch.nn.Module):
     def __init__(self, in_channels, hidden_size=256):
         super(RNNDecoder, self).__init__()
-        self.rnn = torch.nn.LSTM(in_channels, hidden_size, num_layers=2, bidirectional=True)
+        self.rnn = torch.nn.GRU(in_channels, hidden_size, num_layers=2, bidirectional=True)
         self.out_channels = 2 * hidden_size
         self.hidden_size = hidden_size
 
