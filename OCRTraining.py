@@ -22,7 +22,7 @@ from SubtitleDataset import SubtitleDatasetOCR
 def train(model, model_name, train_dataloader, eval_dataloader, labels_name, trainer_name='ocr', backbone_url=None):
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model.to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-5)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     def _prepare_batch(batch, device=None, non_blocking=False):
         """Prepare batch for training: pass to a device with options.
@@ -134,18 +134,18 @@ def OCR_collate_fn(batch):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    chars = SC3500Chars()
+    chars = SC5000Chars()
     texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 15]
     train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'),
                                        texts=texts, grayscale=0)
     eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_yuan.json'),
                                       samples=path.join('data', 'samples_eval'),
-                                      chars=chars, start_frame=500, end_frame=500 + 16, grayscale=0, texts=texts)
+                                      chars=chars, start_frame=500, end_frame=500 + 256, grayscale=0, texts=texts)
 
     train_dataloader = DataLoader(train_dataset, batch_size=16, collate_fn=OCR_collate_fn, num_workers=16, timeout=60)
-    eval_dataloader = DataLoader(eval_dataset, batch_size=16, collate_fn=OCR_collate_fn)
+    eval_dataloader = DataLoader(eval_dataset, batch_size=8, collate_fn=OCR_collate_fn)
 
-    model = CRNNEfficientNetB5(len(chars.chars), rnn_hidden=1280)
+    model = CRNNEfficientNetB3(len(chars.chars), rnn_hidden=768)
 
-    train(model, 'CRNNEfficientNetB5_1280', train_dataloader, eval_dataloader, chars.chars, 'ocr_SC3500Chars_yuan',
-          backbone_url='https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/efficientnet-b5-b6417697.pth')
+    train(model, 'CRNNEfficientNetB3_768', train_dataloader, eval_dataloader, chars.chars, 'ocr_SC5000Chars_hei',
+          backbone_url='https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/efficientnet-b3-5fb5a3c3.pth')
