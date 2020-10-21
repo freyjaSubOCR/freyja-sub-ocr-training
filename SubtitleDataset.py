@@ -151,14 +151,17 @@ class SubtitleDatasetIterator():
 
     def _generateText(self):
         def genRandomText():
-            text = random.sample(self.chars.chars[1:], random.randint(3, 15))
+            text = random.sample(self.chars.chars[1:], random.randint(3, 25))
             if random.random() < 0.2:
+                text = text[:-5] if len(text) > 10 else text
                 text.insert(random.randrange(0, len(text)), ''.join(random.sample(string.ascii_letters, random.randint(3, 7))))
             if random.random() < 0.1:
+                text = text[:-5] if len(text) > 10 else text
                 start = random.randrange(0, len(text))
                 text.insert(start, "『")
                 text.insert(random.randrange(start, len(text)), "』")
             if random.random() < 0.1:
+                text = text[:-5] if len(text) > 10 else text
                 start = random.randrange(0, len(text))
                 text.insert(start, "「")
                 text.insert(random.randrange(start, len(text)), "」")

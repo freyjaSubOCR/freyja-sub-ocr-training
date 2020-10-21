@@ -135,17 +135,17 @@ def OCR_collate_fn(batch):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     chars = SC5000Chars()
-    texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 15]
-    train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_hei.json'),
+    texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 25]
+    train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'),
                                        texts=texts, grayscale=0)
-    eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_hei.json'),
+    eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_yuan.json'),
                                       samples=path.join('data', 'samples_eval'),
                                       chars=chars, start_frame=500, end_frame=500 + 256, grayscale=0, texts=texts)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=16, collate_fn=OCR_collate_fn, num_workers=16, timeout=60)
+    train_dataloader = DataLoader(train_dataset, batch_size=12, collate_fn=OCR_collate_fn, num_workers=8, timeout=60)
     eval_dataloader = DataLoader(eval_dataset, batch_size=8, collate_fn=OCR_collate_fn)
 
     model = CRNNEfficientNetB3(len(chars.chars), rnn_hidden=768)
 
-    train(model, 'CRNNEfficientNetB3_768', train_dataloader, eval_dataloader, chars.chars, 'ocr_SC5000Chars_hei',
+    train(model, 'CRNNEfficientNetB3_768', train_dataloader, eval_dataloader, chars.chars, 'ocr_SC5000Chars_yuan',
           backbone_url='https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/efficientnet-b3-5fb5a3c3.pth')
