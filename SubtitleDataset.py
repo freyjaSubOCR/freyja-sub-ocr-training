@@ -151,9 +151,9 @@ class SubtitleDatasetIterator():
 
     def _generateText(self):
         def genRandomText():
-            text = random.sample(self.chars.chars[1:], random.randint(3, 25))
+            text = random.sample(self.chars.chars[1:], random.randint(3, 22))
             if random.random() < 0.2:
-                text = text[:-5] if len(text) > 10 else text
+                text = text[:-8] if len(text) > 10 else text
                 text.insert(random.randrange(0, len(text)), ''.join(random.sample(string.ascii_letters, random.randint(3, 7))))
             if random.random() < 0.1:
                 text = text[:-5] if len(text) > 10 else text

@@ -135,7 +135,7 @@ def OCR_collate_fn(batch):
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     chars = SC5000Chars()
-    texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 25]
+    texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 22]
     train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'),
                                        texts=texts, grayscale=0)
     eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_yuan.json'),
