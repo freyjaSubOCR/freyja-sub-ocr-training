@@ -93,16 +93,16 @@ Parameters you can change:
     test_dataset = SubtitleDatasetRCNN(chars=SC3500Chars(), start_frame=500, end_frame=500 + 64)
 ```
 
-You can change ```SC3500Chars()``` to other character sets like ```TC3600Chars()``` or ```CJKChars()```
+You can change ```SC5000Chars()``` to other character sets like ```SC3500Chars()```, ```TC3600Chars()```, ```SC5000Chars()```, ```TC5000Chars()```, ```TinyCJKChars()``` or ```CJKChars()```.
 
 ```python
     train_dataloader = DataLoader(train_dataset, batch_size=16, num_workers=8, collate_fn=RCNN_collate_fn, timeout=60)
     test_dataloader = DataLoader(test_dataset, batch_size=16, collate_fn=RCNN_collate_fn)
 ```
 
-You can change the number of ```num_workers``` to reduce memory usage / increase data loading speed
+You can change the number of ```num_workers``` to reduce memory usage / increase data loading speed.
 
-You can change the number of ```batch_size``` to reduce GPU memory usage / increase training speed
+You can change the number of ```batch_size``` to reduce GPU memory usage / increase training speed.
 
 ### OCR
 
@@ -116,7 +116,7 @@ Parameters you can change:
     chars = SC5000Chars()
 ```
 
-You can change ```SC5000Chars()``` to other character sets like ```SC3500Chars()```, ```TC3600Chars()```, ```SC5000Chars()```, ```TC5000Chars()```, ```TinyCJKChars()``` or ```CJKChars()```
+You can change ```SC5000Chars()``` to other character sets like ```SC3500Chars()```, ```TC3600Chars()```, ```SC5000Chars()```, ```TC5000Chars()```, ```TinyCJKChars()``` or ```CJKChars()```.
 
 ```python
     train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'), texts=texts)
@@ -127,7 +127,7 @@ You can change ```SC5000Chars()``` to other character sets like ```SC3500Chars()
                                       chars=chars, start_frame=500, end_frame=500 + 16, grayscale=1, texts=texts)
 ```
 
-You can change ```styles_yuan.json``` to other style files like ```styles_hei.json```
+You can change ```styles_yuan.json``` to other style files like ```styles_hei.json```.
 
 ```python
     train_dataloader = DataLoader(train_dataset, batch_size=16, collate_fn=OCR_collate_fn, num_workers=16, timeout=60)
@@ -143,7 +143,7 @@ You can change the number of ```batch_size``` to reduce GPU memory usage / incre
     model = CRNNResnext101(len(chars.chars), rnn_hidden=1280)
 ```
 
-You can change ```CRNNResnext101``` to other CNN models like ```CRNNResnext50```. Large character sets need larger models.
+You can change ```CRNNResnext101``` to other CNN models like ```CRNNResnext50```, ```CRNNEfficientNetB3``` and ```CRNNEfficientNetB5```. Large character sets need larger models.
 
 You can change the number of ```rnn_hidden```. Large character sets need more RNN hidden states.
 
@@ -154,7 +154,7 @@ You can change the number of ```rnn_hidden```. Large character sets need more RN
 
 You can change string ```CRNNResnext101_1280``` and ```ocr_TC3600Chars_yuan```. These are plain strings that help you identify trained models.
 
-You needs to change the backbone url according to the CNN model you choose. Pre-trained backbone urls can be find on <https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py>.
+You needs to change the backbone url according to the CNN model you choose. Pre-trained backbone urls can be find on <https://github.com/pytorch/vision/blob/master/torchvision/models/resnet.py> for resnet models and <https://github.com/lukemelas/EfficientNet-PyTorch/releases> for efficientnet models.
 
 ## Export model
 
@@ -166,4 +166,13 @@ To export the model that can be used by Freyja, run the ```export_model.py```. Y
 device = torch.device('cuda')
 ```
 
-This line controls the export target of the model. If you want the models to run on CPU, use ```torch.device('cpu')```, or If you want the models to run on GPU, use ```torch.device('cuda')```.
+This line controls the export target of the model. If you want the models to be run on CPU, use ```torch.device('cpu')```, or use ```torch.device('cuda')``` if you want the models to be run on GPU.
+
+```python
+if __name__ == "__main__":
+    export_rcnn_model()
+    export_ocr_resnet_model()
+    export_mse()
+```
+
+To export other kind of ocr models, replace ```export_ocr_resnet_model()``` to other functions like ```export_ocr_efficient_model()```.
