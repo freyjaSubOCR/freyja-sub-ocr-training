@@ -9,7 +9,7 @@ import logging
 
 
 class EditDistanceMetric(Metric):
-    def __init__(self, chars, output_transform=lambda x: x, device=None):
+    def __init__(self, chars=None, output_transform=lambda x: x, device=None):
         super().__init__(output_transform=output_transform, device=device)
         self._edit_distances = 0
         self._num_examples = 0
@@ -29,12 +29,13 @@ class EditDistanceMetric(Metric):
             y_pred = list(y_pred.cpu())
         if isinstance(y, torch.Tensor):
             y = list(y.cpu())
-            
+
         for output, label in zip(y_pred, y):
-            # label_text = ''.join([self.chars[i] for i in label])
-            # output_text = ''.join([self.chars[i] for i in output])
-            # if label_text != output_text:
-            #     logging.info(f'{label_text}\n{output_text}')
+            if self.chars is not None:
+                label_text = ''.join([self.chars[i] for i in label])
+                output_text = ''.join([self.chars[i] for i in output])
+                if label_text != output_text:
+                    logging.info(f'{label_text}\n{output_text}')
             self._edit_distances += difflib.SequenceMatcher(None, label, output).ratio()
         self._num_examples += len(y)
         return super().update(output)
