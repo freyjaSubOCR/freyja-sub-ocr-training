@@ -7,10 +7,10 @@ from efficientnet_pytorch import EfficientNet, get_model_params
 
 
 class RNNDecoder(torch.nn.Module):
-    def __init__(self, in_channels, hidden_size=256):
+    def __init__(self, in_channels, hidden_size=256, bidirectional=True):
         super(RNNDecoder, self).__init__()
-        self.rnn = torch.nn.GRU(in_channels, hidden_size, num_layers=2, bidirectional=True)
-        self.out_channels = 2 * hidden_size
+        self.rnn = torch.nn.GRU(in_channels, hidden_size, num_layers=2, bidirectional=bidirectional)
+        self.out_channels = hidden_size * 2 if bidirectional else hidden_size
         self.hidden_size = hidden_size
 
     def forward(self, x):
@@ -261,21 +261,21 @@ class CRNNResnext101(OCR):
 
 
 class CRNNEfficientNetB3(OCR):
-    def __init__(self, n_classes, rnn_hidden=256):
+    def __init__(self, n_classes, rnn_hidden=256, bidirectional=True):
         backbone = EfficientNetB3Backbone()
-        neck = RNNDecoder(1536, hidden_size=rnn_hidden)
+        neck = RNNDecoder(1536, hidden_size=rnn_hidden, bidirectional=bidirectional)
         super().__init__(n_classes, backbone, neck)
 
 
 class CRNNEfficientNetB5(OCR):
-    def __init__(self, n_classes, rnn_hidden=256):
+    def __init__(self, n_classes, rnn_hidden=256, bidirectional=True):
         backbone = EfficientNetB5Backbone()
-        neck = RNNDecoder(2048, hidden_size=rnn_hidden)
+        neck = RNNDecoder(2048, hidden_size=rnn_hidden, bidirectional=bidirectional)
         super().__init__(n_classes, backbone, neck)
 
 
 class CRNNEfficientNetB7(OCR):
-    def __init__(self, n_classes, rnn_hidden=256):
+    def __init__(self, n_classes, rnn_hidden=256, bidirectional=True):
         backbone = EfficientNetB7Backbone()
-        neck = RNNDecoder(2560, hidden_size=rnn_hidden)
+        neck = RNNDecoder(2560, hidden_size=rnn_hidden, bidirectional=bidirectional)
         super().__init__(n_classes, backbone, neck)
