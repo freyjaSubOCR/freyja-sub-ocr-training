@@ -253,22 +253,14 @@ class SubtitleDatasetIteratorRCNN(SubtitleDatasetIterator):
 
 
 class SubtitleDatasetOCR(SubtitleDataset):
-    def __init__(self, styles_json=None, samples=None, fonts=None, start_frame=0, end_frame=None, chars=BasicChars(), texts=None, grayscale=0.5):
+    def __init__(self, styles_json=None, samples=None, fonts=None, start_frame=0, end_frame=None, chars=BasicChars(), texts=None):
         super().__init__(styles_json=styles_json, samples=samples, fonts=fonts, start_frame=start_frame, end_frame=end_frame, chars=chars, texts=texts)
-        self.grayscale = grayscale
 
     def __iter__(self):
         return SubtitleDatasetIteratorOCR(self)
 
 
 class SubtitleDatasetIteratorOCR(SubtitleDatasetIterator):
-    def _rgb_to_grayscale(self, img: torch.Tensor):
-        img_gray = torch.zeros_like(img)
-        img_gray[0] = 0.2989 * img[0] + 0.5870 * img[1] + 0.1140 * img[2]
-        img_gray[1] = img_gray[0]
-        img_gray[2] = img_gray[0]
-        return img_gray
-
     def __next__(self):
         clip, bounding_box, shape, text = super().__next__()
         img_height, img_width = shape
@@ -287,8 +279,32 @@ class SubtitleDatasetIteratorOCR(SubtitleDatasetIterator):
         clip = core.resize.Bicubic(clip, width=clip.width // 2, height=clip.height // 2)
 
         img = self._clipToTensor(clip)
-        if random.random() < self.dataset.grayscale:
-            img = self._rgb_to_grayscale(img)
+
+        encoded_text = torch.tensor([self.chars.chars.index(char) for char in text], dtype=torch.long)
+
+        return img, encoded_text
+
+
+class SubtitleDatasetOCRV2(SubtitleDataset):
+    def __iter__(self):
+        return SubtitleDatasetIteratorOCRV2(self)
+
+
+class SubtitleDatasetIteratorOCRV2(SubtitleDatasetIterator):
+    def __next__(self):
+        clip, _, shape, text = super().__next__()
+        img_height, img_width = shape
+        crop_pos = (
+            0,  # left
+            int(img_height * 0.75),  # top
+            0,  # right
+            0  # bottom
+        )
+
+        clip = core.std.Crop(clip, left=crop_pos[0], top=crop_pos[1], right=crop_pos[2], bottom=crop_pos[3])
+        clip = core.resize.Bicubic(clip, width=clip.width // 2, height=clip.height // 2)
+
+        img = self._clipToTensor(clip)
 
         encoded_text = torch.tensor([self.chars.chars.index(char) for char in text], dtype=torch.long)
 
@@ -296,8 +312,8 @@ class SubtitleDatasetIteratorOCR(SubtitleDatasetIterator):
 
 
 class SubtitleDatasetOCREval(SubtitleDatasetOCR):
-    def __init__(self, styles_json=None, samples=None, fonts=None, start_frame=0, end_frame=None, chars=BasicChars(), texts=None, grayscale=0.5):
-        super().__init__(styles_json=styles_json, samples=samples, fonts=fonts, start_frame=start_frame, end_frame=end_frame, chars=chars, texts=texts, grayscale=grayscale)
+    def __init__(self, styles_json=None, samples=None, fonts=None, start_frame=0, end_frame=None, chars=BasicChars(), texts=None):
+        super().__init__(styles_json=styles_json, samples=samples, fonts=fonts, start_frame=start_frame, end_frame=end_frame, chars=chars, texts=texts)
 
     def __iter__(self):
         return SubtitleDatasetIteratorOCREval(self)
