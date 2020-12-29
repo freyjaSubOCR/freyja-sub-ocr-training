@@ -11,9 +11,7 @@ from os import path
 import numpy as np
 import torch
 import vapoursynth as vs
-from matplotlib import rcParams
 from numba import njit
-from PIL import Image
 from vapoursynth import core
 
 from Chars import *
@@ -303,6 +301,36 @@ class SubtitleDatasetIteratorOCRV2(SubtitleDatasetIterator):
 
         clip = core.std.Crop(clip, left=crop_pos[0], top=crop_pos[1], right=crop_pos[2], bottom=crop_pos[3])
         clip = core.resize.Bicubic(clip, width=clip.width // 2, height=clip.height // 2)
+
+        img = self._clipToTensor(clip)
+
+        encoded_text = torch.tensor([self.chars.chars.index(char) for char in text], dtype=torch.long)
+
+        return img, encoded_text
+
+
+class SubtitleDatasetOCRV3(SubtitleDataset):
+    def __iter__(self):
+        return SubtitleDatasetIteratorOCRV3(self)
+
+
+class SubtitleDatasetIteratorOCRV3(SubtitleDatasetIterator):
+    def __next__(self):
+        clip, bounding_box, shape, text = super().__next__()
+        img_height, img_width = shape
+
+        crop_pos = (
+            0,  # left
+            bounding_box[1] - random.randint(2, 10),  # top
+            img_width,  # right
+            img_height - (bounding_box[3] + random.randint(2, 4))  # bottom
+        )
+
+        if crop_pos[0] + crop_pos[2] > img_width or crop_pos[1] + crop_pos[3] > img_height:
+            return self.__next__()
+
+        clip = core.std.Crop(clip, left=crop_pos[0], top=crop_pos[1], right=crop_pos[2], bottom=crop_pos[3])
+        clip = core.resize.Bicubic(clip, width=round(40/img_height*img_width), height=40)
 
         img = self._clipToTensor(clip)
 
