@@ -32,7 +32,7 @@ def train(model, model_name, train_dataloader, test_dataloader, trainer_name='bb
         return images, targets
 
     writer = SummaryWriter(log_dir=path.join('logs', trainer_name, model_name))
-    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.5)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=250)
 
     def _update(engine, batch):
         model.train()
@@ -93,9 +93,17 @@ def train(model, model_name, train_dataloader, test_dataloader, trainer_name='bb
             break
         model.train()
 
-    @trainer.on(Events.ITERATION_COMPLETED(every=1000))
+    @trainer.on(Events.ITERATION_COMPLETED(every=10))
     def step_lr(trainer):
-        lr_scheduler.step()
+        lr_scheduler.step(trainer.state.output)
+
+    @trainer.on(Events.ITERATION_COMPLETED(every=100))
+    def read_lr_from_file(trainer):
+        if path.exists('lr.txt'):
+            with open('lr.txt', 'r', encoding='utf-8') as f:
+                lr = float(f.read())
+            for group in optimizer.param_groups:
+                group['lr'] = lr
 
     trainer.run(train_dataloader, max_epochs=100)
 
