@@ -23,6 +23,7 @@ def train(model, model_name, train_dataloader, eval_dataloader, labels_name, tra
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     model = model.to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+    scaler = torch.cuda.amp.GradScaler()
 
     def _prepare_batch(batch, device=None, non_blocking=False):
         """Prepare batch for training: pass to a device with options.
@@ -39,9 +40,14 @@ def train(model, model_name, train_dataloader, eval_dataloader, labels_name, tra
         model.train()
         optimizer.zero_grad()
         x, y = _prepare_batch(batch, device=device)
-        loss = model(x, y)
-        loss.backward()
-        optimizer.step()
+        # loss = model(x, y)
+        # loss.backward()
+        # optimizer.step()
+        with torch.cuda.amp.autocast(enabled=torch.cuda.is_available()):
+            loss = model(x, y)
+        scaler.scale(loss).backward()
+        scaler.step(optimizer)
+        scaler.update()
         return loss.item()
 
     trainer = Engine(_update)
@@ -52,7 +58,8 @@ def train(model, model_name, train_dataloader, eval_dataloader, labels_name, tra
         checkpoint = torch.load(f'{trainer_name}_{model_name}_checkpoint.pt')
         model.load_state_dict(checkpoint['model'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        # lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+        scaler.load_state_dict(checkpoint['scaler'])
+        lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
         logging.info(f'load checkpoint {trainer_name}_{model_name}_checkpoint.pt')
     elif path.exists(f'{model_name}_backbone.pt'):
         pretrained_dict = torch.load(f'{model_name}_backbone.pt')['model']
@@ -73,7 +80,7 @@ def train(model, model_name, train_dataloader, eval_dataloader, labels_name, tra
 
     def early_stop_score_function(engine):
         val_acc = engine.state.metrics['edit_distance']
-        if val_acc < 0.9:  # do not early stop when acc is less than 0.9
+        if val_acc < 0.8:  # do not early stop when acc is less than 0.9
             early_stop_arr[0] += 0.000001
             return early_stop_arr[0]
         return val_acc
@@ -82,8 +89,10 @@ def train(model, model_name, train_dataloader, eval_dataloader, labels_name, tra
     evaluator.add_event_handler(Events.COMPLETED, early_stop_handler)
 
     checkpoint_handler = ModelCheckpoint(f'models/{trainer_name}/{model_name}', model_name, n_saved=10, create_dir=True)
+    # trainer.add_event_handler(Events.ITERATION_COMPLETED(every=1000), checkpoint_handler,
+    #                           {'model': model, 'optimizer': optimizer, 'lr_scheduler': lr_scheduler})
     trainer.add_event_handler(Events.ITERATION_COMPLETED(every=1000), checkpoint_handler,
-                              {'model': model, 'optimizer': optimizer, 'lr_scheduler': lr_scheduler})
+                              {'model': model, 'optimizer': optimizer, 'lr_scheduler': lr_scheduler, 'scaler': scaler})
 
     @trainer.on(Events.ITERATION_COMPLETED(every=10))
     def log_training_loss(trainer):
@@ -137,15 +146,15 @@ if __name__ == "__main__":
     chars = SC5000Chars()
     texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 22]
     train_dataset = SubtitleDatasetOCR(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'),
-                                       texts=texts, grayscale=0)
+                                       texts=texts)
     eval_dataset = SubtitleDatasetOCR(styles_json=path.join('data', 'styles_eval', 'styles_yuan.json'),
                                       samples=path.join('data', 'samples_eval'),
-                                      chars=chars, start_frame=500, end_frame=500 + 256, grayscale=0, texts=texts)
+                                      chars=chars, start_frame=500, end_frame=500 + 256, texts=texts)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=12, collate_fn=OCR_collate_fn, num_workers=8, timeout=60)
-    eval_dataloader = DataLoader(eval_dataset, batch_size=8, collate_fn=OCR_collate_fn)
+    train_dataloader = DataLoader(train_dataset, batch_size=16, collate_fn=OCR_collate_fn, num_workers=8, timeout=60)
+    eval_dataloader = DataLoader(eval_dataset, batch_size=4, collate_fn=OCR_collate_fn)
 
-    model = CRNNEfficientNetB3(len(chars.chars), rnn_hidden=768)
+    model = CRNNEfficientNetB3(len(chars.chars), rnn_hidden=768, bidirectional=False)
 
-    train(model, 'CRNNEfficientNetB3_768', train_dataloader, eval_dataloader, chars.chars, 'ocr_SC5000Chars_yuan',
+    train(model, 'CRNNEfficientNetB3_768', train_dataloader, eval_dataloader, chars.chars, 'ocr_v2_amp_SC5000Chars_yuan',
           backbone_url='https://github.com/lukemelas/EfficientNet-PyTorch/releases/download/1.0/efficientnet-b3-5fb5a3c3.pth')
