@@ -322,15 +322,15 @@ class SubtitleDatasetIteratorOCRV3(SubtitleDatasetIterator):
         crop_pos = (
             0,  # left
             bounding_box[1] - random.randint(2, 10),  # top
-            img_width,  # right
+            0,  # right
             img_height - (bounding_box[3] + random.randint(2, 4))  # bottom
         )
 
-        if crop_pos[0] + crop_pos[2] > img_width or crop_pos[1] + crop_pos[3] > img_height:
+        if crop_pos[0] + crop_pos[2] >= img_width or crop_pos[1] + crop_pos[3] >= img_height:
             return self.__next__()
 
         clip = core.std.Crop(clip, left=crop_pos[0], top=crop_pos[1], right=crop_pos[2], bottom=crop_pos[3])
-        clip = core.resize.Bicubic(clip, width=round(40/img_height*img_width), height=40)
+        clip = core.resize.Bicubic(clip, width=round(40/clip.height*clip.width), height=40)
 
         img = self._clipToTensor(clip)
 
