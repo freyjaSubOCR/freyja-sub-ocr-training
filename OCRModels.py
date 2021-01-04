@@ -195,7 +195,7 @@ class EfficientNetB3Backbone(EfficientNet):
 
     def __init__(self):
         blocks_args, global_params = get_model_params('efficientnet-b3', None)
-        global_params = global_params._replace(image_size=(40, 960))
+        global_params = global_params._replace(image_size=(40, 900))
         blocks_args[-2] = blocks_args[-2]._replace(stride=[1])
         super().__init__(blocks_args, global_params)
 
@@ -209,7 +209,7 @@ class EfficientNetB5Backbone(EfficientNet):
 
     def __init__(self):
         blocks_args, global_params = get_model_params('efficientnet-b5', None)
-        global_params = global_params._replace(image_size=(40, 960))
+        global_params = global_params._replace(image_size=(40, 900))
         blocks_args[-2] = blocks_args[-2]._replace(stride=[1])
         super().__init__(blocks_args, global_params)
 
@@ -223,7 +223,7 @@ class EfficientNetB7Backbone(EfficientNet):
 
     def __init__(self):
         blocks_args, global_params = get_model_params('efficientnet-b7', None)
-        global_params = global_params._replace(image_size=(40, 960))
+        global_params = global_params._replace(image_size=(40, 900))
         blocks_args[-2] = blocks_args[-2]._replace(stride=[1])
         super().__init__(blocks_args, global_params)
 
