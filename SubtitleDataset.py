@@ -20,7 +20,8 @@ if not hasattr(core, 'ffms2'):
     # core.std.LoadPlugin('C:\\Program Files M\\vapoursynth\\vapoursynth64\\plugins\\ffms2.dll')
     core.std.LoadPlugin('/usr/local/lib/libffms2.so')
 
-core.max_cache_size = 2048 # 2G per worker
+core.max_cache_size = 2048  # 2G per worker
+
 
 @njit(nogil=True, cache=True)
 def _find_bounding_box(mask, shape):
@@ -90,6 +91,54 @@ class VideoDatasetTorchScript(VideoDataset):
 
         del frame
         return img
+
+
+class VideoDatasetV3(VideoDataset):
+    '''
+    Load video and subtitle as a pytorch dataset
+    '''
+
+    def __getitem__(self, index):
+        clip = self.clip[index]
+
+        mask_frame = self.mask.get_frame(index)
+        mask_img = mask_frame.get_read_array(0)
+        del mask_frame
+        bounding_box = _find_bounding_box(mask_img, mask_img.shape)
+
+        if bounding_box[0] != -1 and bounding_box[1] != -1 and bounding_box[2] != -1 and bounding_box[3] != -1:
+            crop_pos = (
+                0,  # left
+                bounding_box[1] - random.randint(2, 20),  # top
+                0,  # right
+                clip.height - (bounding_box[3] + random.randint(2, 20))  # bottom
+            )
+
+            if crop_pos[0] + crop_pos[2] >= clip.width or crop_pos[1] + crop_pos[3] >= clip.height:
+                return self.__next__()
+
+            clip = core.std.Crop(clip, left=crop_pos[0], top=crop_pos[1], right=crop_pos[2], bottom=(crop_pos[3] if crop_pos[3] > 0 else 0))
+            clip = core.resize.Bicubic(clip, width=round(40 / clip.height * clip.width), height=40)
+
+        return self._clipToTensor(clip)
+
+
+class VideoDatasetV3TorchScript(VideoDatasetTorchScript):
+    '''
+    Load video and subtitle as a pytorch dataset
+    '''
+
+    def __init__(self, video, cropTop=0, cropBottom=0):
+        super().__init__(video)
+        self.cropTop = cropTop
+        self.cropBottom = cropBottom
+
+    def __getitem__(self, index):
+        clip = self.clip[index]
+        clip = core.std.Crop(clip, left=0, top=self.cropTop, right=0, bottom=self.cropBottom)
+        clip = core.resize.Bicubic(clip, width=round(40 / clip.height * clip.width), height=40)
+
+        return self._clipToTensor(clip)
 
 
 class SubtitleDataset(torch.utils.data.IterableDataset):
@@ -321,16 +370,16 @@ class SubtitleDatasetIteratorOCRV3(SubtitleDatasetIterator):
 
         crop_pos = (
             0,  # left
-            bounding_box[1] - random.randint(2, 10),  # top
+            bounding_box[1] - random.randint(2, 20),  # top
             0,  # right
-            img_height - (bounding_box[3] + random.randint(2, 4))  # bottom
+            img_height - (bounding_box[3] + random.randint(2, 20))  # bottom
         )
 
         if crop_pos[0] + crop_pos[2] >= img_width or crop_pos[1] + crop_pos[3] >= img_height:
             return self.__next__()
 
-        clip = core.std.Crop(clip, left=crop_pos[0], top=crop_pos[1], right=crop_pos[2], bottom=crop_pos[3])
-        clip = core.resize.Bicubic(clip, width=round(40/clip.height*clip.width), height=40)
+        clip = core.std.Crop(clip, left=crop_pos[0], top=crop_pos[1], right=crop_pos[2], bottom=(crop_pos[3] if crop_pos[3] > 0 else 0))
+        clip = core.resize.Bicubic(clip, width=round(40 / clip.height * clip.width), height=40)
 
         img = self._clipToTensor(clip)
 

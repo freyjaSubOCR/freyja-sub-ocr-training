@@ -33,6 +33,19 @@ class OCRTorchScript(torch.nn.Module):
         return batched_imgs
 
 
+class OCRTorchScriptV3(torch.nn.Module):
+    def __init__(self, OCRModel):
+        super().__init__()
+        self.base_model = OCRModel
+
+    def forward(self, x):
+        x = x.permute((0, 3, 1, 2))
+        height = x.shape[2]
+        x = F.interpolate(x, mode='bicubic', scale_factor=40 / height, recompute_scale_factor=False, align_corners=False)
+        x = x.true_divide_(255).clamp_(0, 1)
+        return self.base_model(x)
+
+
 class RCNNTorchScript(torch.nn.Module):
     def __init__(self, RCNNModel):
         super().__init__()
