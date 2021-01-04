@@ -34,7 +34,7 @@ def train(model, model_name, train_dataloader, eval_dataloader, labels_name, tra
         return (images, labels)
 
     writer = SummaryWriter(log_dir=f'logs/{trainer_name}/{model_name}')
-    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=250)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.5, patience=250, cooldown=100, min_lr=1e-6)
 
     def _update(engine, batch):
         model.train()
@@ -146,12 +146,12 @@ if __name__ == "__main__":
     chars = SC5000Chars()
     texts = [text for text in ASSReader().getCompatible(chars) if len(text) <= 22]
     train_dataset = SubtitleDatasetOCRV3(chars=chars, styles_json=path.join('data', 'styles', 'styles_yuan.json'),
-                                       texts=texts)
+                                         texts=texts)
     eval_dataset = SubtitleDatasetOCRV3(styles_json=path.join('data', 'styles_eval', 'styles_yuan.json'),
-                                      samples=path.join('data', 'samples_eval'),
-                                      chars=chars, start_frame=500, end_frame=500 + 256, texts=texts)
+                                        samples=path.join('data', 'samples_eval'),
+                                        chars=chars, start_frame=500, end_frame=500 + 256, texts=texts)
 
-    train_dataloader = DataLoader(train_dataset, batch_size=16, collate_fn=OCR_collate_fn, num_workers=8, timeout=60)
+    train_dataloader = DataLoader(train_dataset, batch_size=8, collate_fn=OCR_collate_fn, num_workers=8, timeout=60)
     eval_dataloader = DataLoader(eval_dataset, batch_size=4, collate_fn=OCR_collate_fn)
 
     model = CRNNEfficientNetB3(len(chars.chars), rnn_hidden=768, bidirectional=True)
