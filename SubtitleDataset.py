@@ -51,7 +51,7 @@ class VideoDataset(torch.utils.data.Dataset):
         clip = core.ffms2.Source(source=video)
         clip = core.resize.Bicubic(clip, format=vs.RGB24, matrix_in_s="709")
         if ass is not None:
-            sub, mask = core.sub.TextFile(clip, ass, blend=False, fontdir=fonts)
+            sub, mask = core.sub.TextFile(clip, ass, blend=False, fontdir=fonts)#, debuglevel=7)
             self.clip = core.std.MaskedMerge(clip, sub, mask)
             del sub
             self.mask = mask
@@ -197,27 +197,10 @@ class SubtitleDatasetIterator():
         return f'{time_struct.tm_hour}:{time_struct.tm_min:02d}:{time_struct.tm_sec:02d}.{time_int % 100:02}'
 
     def _generateText(self):
-        def genRandomText():
-            text = random.sample(self.chars.chars[1:], random.randint(3, 22))
-            if random.random() < 0.2:
-                text = text[:-8] if len(text) > 10 else text
-                text.insert(random.randrange(0, len(text)), ''.join(random.sample(string.ascii_letters, random.randint(3, 7))))
-            if random.random() < 0.1:
-                text = text[:-5] if len(text) > 10 else text
-                start = random.randrange(0, len(text))
-                text.insert(start, "『")
-                text.insert(random.randrange(start, len(text)), "』")
-            if random.random() < 0.1:
-                text = text[:-5] if len(text) > 10 else text
-                start = random.randrange(0, len(text))
-                text.insert(start, "「")
-                text.insert(random.randrange(start, len(text)), "」")
-            return ''.join(text)
-
         if self.texts == None:
-            self.texts = [genRandomText() for _ in range(self.clip.num_frames)]
+            self.texts = [self.chars.generateRandomText() for _ in range(self.clip.num_frames)]
         else:
-            self.texts = [genRandomText() if random.random() < 0.5 else random.choice(self.texts) for _ in range(self.clip.num_frames)]
+            self.texts = [self.chars.generateRandomText() if random.random() < 0.5 else random.choice(self.texts) for _ in range(self.clip.num_frames)]
 
     def _generateSub(self):
         ass_file_text = "[Script Info]\n" + \
@@ -286,6 +269,9 @@ class SubtitleDatasetIteratorRCNN(SubtitleDatasetIterator):
             random.randint(0, img_height - bounding_box[3])  # bottom
         )
 
+        if crop_pos[0] + crop_pos[2] >= img_width or crop_pos[1] + crop_pos[3] >= img_height or crop_pos[1] <= 0 or crop_pos[3] <= 0:
+            return self.__next__()
+
         clip = core.std.Crop(clip, left=crop_pos[0], top=crop_pos[1], right=crop_pos[2], bottom=crop_pos[3])
         img = self._clipToTensor(clip)
 
@@ -319,7 +305,7 @@ class SubtitleDatasetIteratorOCR(SubtitleDatasetIterator):
             img_height - (bounding_box[3] + random.randint(2, 4))  # bottom
         )
 
-        if crop_pos[0] + crop_pos[2] >= img_width or crop_pos[1] + crop_pos[3] >= img_height:
+        if crop_pos[0] + crop_pos[2] >= img_width or crop_pos[1] + crop_pos[3] >= img_height or crop_pos[1] <= 0 or crop_pos[3] <= 0:
             return self.__next__()
 
         clip = core.std.Crop(clip, left=crop_pos[0], top=crop_pos[1], right=crop_pos[2], bottom=crop_pos[3])
@@ -375,7 +361,7 @@ class SubtitleDatasetIteratorOCRV3(SubtitleDatasetIterator):
             img_height - (bounding_box[3] + random.randint(2, 20))  # bottom
         )
 
-        if crop_pos[0] + crop_pos[2] >= img_width or crop_pos[1] + crop_pos[3] >= img_height:
+        if crop_pos[0] + crop_pos[2] >= img_width or crop_pos[1] + crop_pos[3] >= img_height or crop_pos[1] <= 0 or crop_pos[3] <= 0:
             return self.__next__()
 
         clip = core.std.Crop(clip, left=crop_pos[0], top=crop_pos[1], right=crop_pos[2], bottom=(crop_pos[3] if crop_pos[3] > 0 else 0))
