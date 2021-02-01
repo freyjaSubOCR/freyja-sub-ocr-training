@@ -1,9 +1,10 @@
+import random
 import string
 
 
 class BasicChars():
     '''
-    Chars containing letters, digits, kana and punctuation
+    Chars containing letters, digits and punctuation
     '''
 
     def __init__(self):
@@ -20,7 +21,61 @@ class BasicChars():
             f.write(self.chars)
 
 
-class TC3600Chars(BasicChars):
+class LatinChars(BasicChars):
+    '''
+    Contains all common Latin-script alphabets. Source: https://en.wikipedia.org/wiki/List_of_Latin-script_alphabets
+    '''
+
+    def __init__(self):
+        super().__init__()
+        with open('data/chars/latinChars.txt', 'r', encoding='utf-8') as f:
+            self.chars = self.chars + f.read()
+
+    def generateRandomText(self, max_length=20):
+        text = ' '.join([''.join(random.sample(self.chars[1:], random.randint(2, 10))) for _ in range(random.randint(1, 10))])[:max_length]
+        text = list(text)
+        if random.random() < 0.1:
+            text = text[:-5] if len(text) > 10 else text
+            start = random.randrange(0, len(text))
+            text.insert(start, "\"")
+            text.insert(random.randrange(start, len(text)), "\"")
+        if random.random() < 0.1:
+            text = text[:-5] if len(text) > 10 else text
+            start = random.randrange(0, len(text))
+            text.insert(start, "\'")
+            text.insert(random.randrange(start, len(text)), "\'")
+        return ''.join(text)
+
+
+class ChineseChars(BasicChars):
+    '''
+    Base class for all Chinese chars. Add Chinese punctuation chars.
+    '''
+
+    def __init__(self):
+        super().__init__()
+        with open('data/chars/chinesePunctuationChars.txt', 'r', encoding='utf-8') as f:
+            self.chars = self.chars + f.read()
+
+    def generateRandomText(self, max_length=22):
+        text = random.sample(self.chars[1:], random.randint(3, max_length))
+        if random.random() < 0.2:
+            text = text[:-8] if len(text) > 10 else text
+            text.insert(random.randrange(0, len(text)), ''.join(random.sample(string.ascii_letters, random.randint(3, 7))))
+        if random.random() < 0.1:
+            text = text[:-5] if len(text) > 10 else text
+            start = random.randrange(0, len(text))
+            text.insert(start, "『")
+            text.insert(random.randrange(start, len(text)), "』")
+        if random.random() < 0.1:
+            text = text[:-5] if len(text) > 10 else text
+            start = random.randrange(0, len(text))
+            text.insert(start, "「")
+            text.insert(random.randrange(start, len(text)), "」")
+        return ''.join(text)
+
+
+class TC3600Chars(ChineseChars):
     '''
     Chars containing BaseChars and frequently used 3500 simplified chinese chars
     '''
@@ -31,7 +86,7 @@ class TC3600Chars(BasicChars):
             self.chars = self.chars + f.read()
 
 
-class SC3500Chars(BasicChars):
+class SC3500Chars(ChineseChars):
     '''
     Chars containing BaseChars and frequently used 3500 simplified chinese chars
     '''
@@ -42,7 +97,7 @@ class SC3500Chars(BasicChars):
             self.chars = self.chars + f.read()
 
 
-class SC5000Chars(BasicChars):
+class SC5000Chars(ChineseChars):
     '''
     Chars containing BaseChars and frequently used 5000 simplified chinese chars
     '''
@@ -53,7 +108,7 @@ class SC5000Chars(BasicChars):
             self.chars = self.chars + f.read()
 
 
-class TC5000Chars(BasicChars):
+class TC5000Chars(ChineseChars):
     '''
     Chars containing BaseChars and frequently used 5000 traditional chinese chars
     '''
@@ -64,7 +119,7 @@ class TC5000Chars(BasicChars):
             self.chars = self.chars + f.read()
 
 
-class SC7000Chars(BasicChars):
+class SC7000Chars(ChineseChars):
     '''
     Chars containing BaseChars and frequently used 7000 simplified chinese chars
     '''
@@ -75,7 +130,7 @@ class SC7000Chars(BasicChars):
             self.chars = self.chars + f.read()
 
 
-class TinyCJKChars(BasicChars):
+class TinyCJKChars(ChineseChars):
     '''
     Chars containing BaseChars and frequently used 8000 CJK chars
     '''
@@ -86,7 +141,7 @@ class TinyCJKChars(BasicChars):
             self.chars = self.chars + f.read()
 
 
-class CJKChars(BasicChars):
+class CJKChars(ChineseChars):
     '''
     Chars containing BaseChars and Unicode CJK Unified Ideographs (No extensions)
     '''
