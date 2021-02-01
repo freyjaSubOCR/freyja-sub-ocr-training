@@ -13,6 +13,8 @@ class ASSReader():
             if re.search(regex, ass) is not None:
                 with open(path.join(asses, ass), 'r', encoding='utf-8') as f:
                     for line in f:
+                        line = line.replace('{\\be1}', '')
+                        line = line.replace('\\N', ' ')
                         match = re.search(r'Dialogue: \d+,(?P<time>\d:\d{2}:\d{2}.\d{2}),([^,]*?,){7}(?P<text>[^—{\-,]+)\n', line)
                         if match is not None:
                             time = match.groupdict()['time']
