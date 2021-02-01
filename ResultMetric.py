@@ -8,16 +8,15 @@ import difflib
 import logging
 
 
-class EditDistanceMetric(Metric):
-    def __init__(self, output_transform=lambda x: x, device=None):
+class ResultMetric(Metric):
+    def __init__(self, chars=None, output_transform=lambda x: x, device=None):
         super().__init__(output_transform=output_transform, device=device)
-        self._edit_distances = 0
-        self._num_examples = 0
+        self._result = ''
+        self.chars = chars
 
     @reinit__is_reduced
     def reset(self):
-        self._edit_distances = 0
-        self._num_examples = 0
+        self._result = ''
         return super().reset()
 
     @reinit__is_reduced
@@ -30,12 +29,11 @@ class EditDistanceMetric(Metric):
             y = list(y.cpu())
 
         for output, label in zip(y_pred, y):
-            self._edit_distances += difflib.SequenceMatcher(None, label, output).ratio()
-        self._num_examples += len(y)
+            label_text = ''.join([self.chars[i] for i in label])
+            output_text = ''.join([self.chars[i] for i in output])
+            self._result += f'{label_text}: {output_text}\n'
         return super().update(output)
 
-    @sync_all_reduce("_num_examples", "_edit_distances")
+    @sync_all_reduce("_result")
     def compute(self):
-        if self._num_examples == 0:
-            raise NotComputableError('CustomAccuracy must have at least one example before it can be computed.')
-        return self._edit_distances / self._num_examples
+        return self._result
